@@ -211,6 +211,7 @@ app.layout = html.Div(
     ''', style = styles),
 
     dcc.Tabs(id='tabs', value='tab-1', children=[
+        dcc.Input(id="input-departure", type="text",style = styles, placeholder="D'où partez-vous ?"),
         dcc.Tab(label='Places disponibles', value='tab-1', style = styles, selected_style = active_tab_style),
         dcc.Tab(label='Vélos disponibles', value='tab-2', style = styles, selected_style = active_tab_style),
     ]),
