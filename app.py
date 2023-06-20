@@ -135,6 +135,10 @@ fig_remise.update_layout(
 app = Dash(__name__)
 server = app.server
 
+# Définir le titre de l'application
+
+app.title = "Transports Toulouse VCA"
+
 # Styles CSS personnalisés pour le titre et l'arrière-plan
 styles = {
     'backgroundColor': '#a5282b',
@@ -143,9 +147,18 @@ styles = {
     'padding': '20px'
 }
 
+# Styles CSS pour l'onglet actif
+active_tab_style = {
+    'backgroundColor': '#ffc12b',
+    'color': '#a5282b',
+    'fontWeight': 'bold'
+}
+
 # Création des onglets
-app.layout = html.Div(children=[
-    html.H1(children='Carte en temps réel des vélos à Toulouse', style=styles),
+app.layout = html.Div(
+    style = {'backgroundColor' : styles['backgroundColor']},
+             children=[
+    html.H1(children=Transports Toulouse VCA', style=styles),
 
     html.Div(children='''
 
@@ -155,8 +168,8 @@ app.layout = html.Div(children=[
     ''', style = styles),
 
     dcc.Tabs(id='tabs', value='tab-1', children=[
-        dcc.Tab(label='Places disponibles', value='tab-1', style = styles),
-        dcc.Tab(label='Vélos disponibles', value='tab-2', style = styles),
+        dcc.Tab(label='Places disponibles', value='tab-1', style = styles, selected_style = active_tab_style),
+        dcc.Tab(label='Vélos disponibles', value='tab-2', style = styles, selected_style = active_tab_style),
     ]),
 
     html.Div(id='tab-content')
