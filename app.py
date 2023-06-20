@@ -158,7 +158,7 @@ active_tab_style = {
 app.layout = html.Div(
     style = {'backgroundColor' : styles['backgroundColor']},
              children=[
-    html.H1(children=Transports Toulouse VCA', style=styles),
+    html.H1(children="Transports Toulouse VCA", style=styles),
 
     html.Div(children='''
 
