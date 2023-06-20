@@ -92,6 +92,47 @@ fig_recup.update_layout(
     )
 )
 
+# Création de la carte pour les vélos disponibles
+fig_recup = go.Figure(data=go.Scattermapbox(
+    lat=df_velo_temps_reel['lat'],
+    lon=df_velo_temps_reel['lon'],
+    mode='markers',
+    marker=dict(
+        size=8,
+        color=df_velo_temps_reel['num_bikes_available'],
+        colorscale='RdYlGn',
+        cmin=df_velo_temps_reel['num_bikes_available'].min(),
+        cmax=df_velo_temps_reel['num_bikes_available'].max(),
+        colorbar=dict(
+            title='Nombre de vélos disponibles'
+        )
+    ),
+    hovertemplate='<b>%{customdata[0]}</b><br><br>' +
+                  'Adresse: %{customdata[1]}<br>' +
+                  'Nombre de vélos maximum: %{customdata[2]}<br>' +
+                  'Dernière mise à jour: %{customdata[3]}<br>' +
+                  'Nombre de vélos disponibles: %{customdata[4]}',
+    customdata=df_velo_temps_reel[['name', 'address', 'capacity', 'last_reported', 'num_bikes_available']],
+))
+
+fig_recup.update_layout(
+    mapbox=dict(
+        style='carto-positron',
+        center=dict(lat=43.599, lon=1.436),
+        zoom=12,
+        bgcolor=styles['backgroundColor']  # Fond de la carte
+    ),
+    width=1000,
+    height=600,
+    coloraxis_colorscale="RdYlGn",
+    hoverlabel=dict(
+        bgcolor='white',
+        font_size=12,
+        font_family='Arial'
+    ),
+    plot_bgcolor=styles['backgroundColor']  # Fond du graphique
+)
+
 # Création de la carte pour les places disponibles pour remise des vélos
 fig_remise = go.Figure(data=go.Scattermapbox(
     lat=df_velo_temps_reel['lat'],
@@ -100,7 +141,7 @@ fig_remise = go.Figure(data=go.Scattermapbox(
     marker=dict(
         size=8,
         color=df_velo_temps_reel['num_docks_available'],
-        colorscale='RdYlBu',
+        colorscale='RdYlGn',
         cmin=df_velo_temps_reel['num_docks_available'].min(),
         cmax=df_velo_temps_reel['num_docks_available'].max(),
         colorbar=dict(
@@ -119,7 +160,8 @@ fig_remise.update_layout(
     mapbox=dict(
         style='carto-positron',
         center=dict(lat=43.599, lon=1.436),
-        zoom=12
+        zoom=12,
+        bgcolor=styles['backgroundColor']  # Fond de la carte
     ),
     width=1000,
     height=600,
@@ -128,7 +170,8 @@ fig_remise.update_layout(
         bgcolor='white',
         font_size=12,
         font_family='Arial'
-    )
+    ),
+    plot_bgcolor=styles['backgroundColor']  # Fond du graphique
 )
 
 # Création de l'application Dash
