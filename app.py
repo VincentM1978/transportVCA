@@ -130,7 +130,7 @@ fig_recup.update_layout(
         font_size=12,
         font_family='Arial'
     ),
-    plot_bgcolor=styles['backgroundColor']  # Fond du graphique
+    plot_bgcolor='#a5282b' # Fond du graphique
 )
 
 # Création de la carte pour les places disponibles pour remise des vélos
