@@ -137,8 +137,8 @@ server = app.server
 
 # Styles CSS personnalisés pour le titre et l'arrière-plan
 styles = {
-    'backgroundColor': 'red',
-    'color': 'gold',
+    'backgroundColor': '#a5282b',
+    'color': '#ffc12b',
     'textAlign': 'center',
     'padding': '20px'
 }
