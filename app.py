@@ -120,7 +120,7 @@ fig_recup.update_layout(
         style='carto-positron',
         center=dict(lat=43.599, lon=1.436),
         zoom=12,
-        bgcolor=styles['backgroundColor']  # Fond de la carte
+        bgcolor='#a5282b'  # Fond de la carte
     ),
     width=1000,
     height=600,
