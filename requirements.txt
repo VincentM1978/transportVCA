@@ -4,3 +4,4 @@ pandas
 requests
 pytz
 gunicorn
+geopy
