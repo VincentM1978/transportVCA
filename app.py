@@ -84,7 +84,7 @@ fig_recup.update_layout(
     ),
     width=1000,
     height=600,
-    coloraxis_colorscale=custom_colors,
+    coloraxis_colorscale="RdYlGn",
     hoverlabel=dict(
         bgcolor='white',
         font_size=12,
@@ -123,7 +123,7 @@ fig_remise.update_layout(
     ),
     width=1000,
     height=600,
-    coloraxis_colorscale=custom_colors,
+    coloraxis_colorscale="RdYlGn",
     hoverlabel=dict(
         bgcolor='white',
         font_size=12,
