@@ -93,10 +93,6 @@ inactive_tab_style = {
 app.layout = html.Div(style={'backgroundColor': styles['backgroundColor']}, children=[
     html.H1(children="Transports Toulouse VCA", style=styles),
 
-    html.Div(children='''
-        Visualisation de la disponibilité des vélos et des places pour remise des vélos.
-    ''', style=styles),
-
     html.Hr(),
 
     html.H2("Trouver le parking le plus proche", style=styles),
