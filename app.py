@@ -133,6 +133,7 @@ fig_remise.update_layout(
 
 # Création de l'application Dash
 app = Dash(__name__)
+server = app.server
 
 # Styles CSS personnalisés pour le titre et l'arrière-plan
 styles = {
