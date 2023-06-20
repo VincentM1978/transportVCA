@@ -148,12 +148,15 @@ app.layout = html.Div(children=[
     html.H1(children='Carte en temps réel des vélos à Toulouse', style=styles),
 
     html.Div(children='''
+
+
+    
         Visualisation de la disponibilité des vélos et des places pour remise des vélos.
-    '''),
+    ''', style = styles),
 
     dcc.Tabs(id='tabs', value='tab-1', children=[
-        dcc.Tab(label='Places disponibles', value='tab-1'),
-        dcc.Tab(label='Vélos disponibles', value='tab-2'),
+        dcc.Tab(label='Places disponibles', value='tab-1', style = styles),
+        dcc.Tab(label='Vélos disponibles', value='tab-2', style = styles),
     ]),
 
     html.Div(id='tab-content')
