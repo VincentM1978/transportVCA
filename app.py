@@ -1,5 +1,5 @@
 # Importer les bibliothèques nécessaires
-from dash import Dash, html, dcc, dash_table
+from dash import *
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import pandas as pd
