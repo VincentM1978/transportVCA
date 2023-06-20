@@ -1,6 +1,6 @@
 import dash
 from dash import dcc
-import dash_html_components as html
+from dash import html
 import pandas as pd
 import plotly.express as px
 import requests
@@ -100,12 +100,28 @@ app.layout = html.Div(style={'backgroundColor': styles['backgroundColor']}, chil
     html.Hr(),
 
     html.H2("Trouver le parking le plus proche", style=styles),
-    html.Div([
-        dcc.Input(id='adresse-depart', type='text', placeholder='Entrez votre adresse de départ'),
-        html.Button('Trouver', id='submit-button', n_clicks=0),
-        html.Div(id='output-container-button',
-                 children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.')
-    ]),
+    html.Div(
+        children=[
+            dcc.Input(
+                id='adresse-depart',
+                type='text',
+                placeholder='Entrez votre adresse de départ',
+                style={'width': '300px', 'margin': '0 auto', 'font-size': '18px', 'color': '#ffc12b'}
+            ),
+            html.Button(
+                'Trouver',
+                id='submit-button',
+                n_clicks=0,
+                style={'display': 'block', 'margin': '20px auto', 'font-size': '18px'}
+            )
+        ],
+        style={'text-align': 'center'}
+    ),
+    html.Div(
+        id='output-container-button',
+        children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.',
+        style={'color': '#ffc12b', 'font-size': '18px'}
+    ),
 
     html.Hr(),
 
@@ -148,13 +164,23 @@ def update_output(n_clicks, adresse_depart):
             user_coordinates = (location.latitude, location.longitude)
             distances = df_velo_temps_reel.apply(lambda row: geodesic(user_coordinates, (row['lat'], row['lon'])),
                                                  axis=1)
-            closest_station_index = distances.idxmin()
+            distances = distances.fillna(float('inf'))
+            distances_numeric = distances.apply(lambda x: x.meters)  # Convert distances to numeric values
+            closest_station_index = distances_numeric.idxmin()
             closest_station = df_velo_temps_reel.loc[closest_station_index]
-            return f"Le parking le plus proche de votre adresse de départ est : {closest_station['name']} ({closest_station['address']})"
+            return html.Div([
+                html.P(f"Le parking le plus proche de votre adresse de départ est : {closest_station['name']} ({closest_station['address']})")
+            ])
         else:
-            return 'Veuillez entrer une adresse de départ.'
+            return html.Div([
+                html.P('Veuillez entrer une adresse de départ.')
+            ])
     else:
-        return 'Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.'
+        return html.Div([
+            html.P('Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.')
+        ])
+
+
 
 
 if __name__ == '__main__':
