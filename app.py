@@ -51,7 +51,7 @@ df_velo_temps_reel = pd.merge(df_stations, df_disponibilites, how="left", on='st
 df_velo_temps_reel['name'] = df_velo_temps_reel['name'].apply(lambda x: x[8:])
 
 # Configuration des couleurs personnalisées pour le graphique
-custom_colors = [[0.0, "rgb(255, 0, 0)"], [0.05, "rgb(255,163,49)"],[0.25, "rgb(0, 255, 0)"],[1.0, "rgb(0, 255, 0)"]]
+custom_colors = ["RdYlGn"]
 
 # Création de la carte pour les vélos disponibles
 fig_recup = go.Figure(data=go.Scattermapbox(
