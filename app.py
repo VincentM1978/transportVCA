@@ -94,6 +94,8 @@ app.layout = html.Div(style={'backgroundColor': styles['backgroundColor']}, chil
     html.H1(children="Transports Toulouse VCA", style=styles),
 
     html.Hr(),
+    html.Hr(),
+    html.Hr(),
 
     html.H2("Trouver le parking le plus proche", style=styles),
     html.Div(
