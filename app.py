@@ -95,8 +95,7 @@ app.layout = html.Div(style={'backgroundColor': styles['backgroundColor']}, chil
 
     html.Hr(),
     html.Hr(),
-    html.Hr(),
-
+   
     html.H2("Trouver le parking le plus proche", style=styles),
     html.Div(
         children=[
