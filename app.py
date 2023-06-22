@@ -90,62 +90,71 @@ inactive_tab_style = {
 }
 
 # Création des onglets
-app.layout = html.Div(style={'backgroundColor': styles['backgroundColor']}, children=[
-    html.H1(children="Transports Toulouse VCA", style=styles),
+app.layout = html.Div(style={'backgroundColor': styles['backgroundColor'], 'display': 'flex'}, children=[
+    html.Div(style={'flex': '1'}, children=[
+        html.H1(children="Transports Toulouse VCA", style=styles),
 
-    html.Hr(),
-    html.Hr(),
-   
-    html.H2("Trouver le parking le plus proche", style=styles),
-    html.Div(
-        children=[
-            dcc.Input(
-                id='adresse-depart',
-                type='text',
-                placeholder='Entrez votre adresse de départ',
-                style={'width': '300px', 'margin': '0 auto', 'font-size': '18px', 'color': '#ffc12b'}
-            ),
-            html.Button(
-                'Trouver',
-                id='submit-button',
-                n_clicks=0,
-                style={'display': 'block', 'margin': '20px auto', 'font-size': '18px'}
-            )
-        ],
-        style={'text-align': 'center'}
-    ),
-    html.Div(
-        id='output-container-button',
-        children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.',
-        style={'color': '#ffc12b', 'font-size': '18px'}
-    ),
+        html.Div(children='''
+            Visualisation de la disponibilité des vélos et des places pour remise des vélos.
+        ''', style=styles),
 
-    html.Hr(),
+        html.Hr(),
 
-    html.H2("Visualisation de la disponibilité des vélos et des places pour remise des vélos.", style=styles),
-    dcc.Tabs(id="tabs", value='tab-1', children=[
-        dcc.Tab(label='Carte des vélos disponibles', value='tab-1', style=inactive_tab_style,
-                selected_style=active_tab_style),
-        dcc.Tab(label='Carte des places disponibles pour remise des vélos', value='tab-2',
-                style=inactive_tab_style, selected_style=active_tab_style),
+        html.H2("Trouver le parking le plus proche", style=styles),
+        html.Div(
+            children=[
+                dcc.Input(
+                    id='adresse-depart',
+                    type='text',
+                    placeholder='Entrez votre adresse de départ',
+                    style={'width': '300px', 'margin': '0 auto', 'font-size': '18px', 'color': '#ffc12b'}
+                ),
+                html.Button(
+                    'Trouver',
+                    id='submit-button',
+                    n_clicks=0,
+                    style={'display': 'block', 'margin': '20px auto', 'font-size': '18px'}
+                )
+            ],
+            style={'text-align': 'center'}
+        ),
+        html.Div(
+            id='output-container-button',
+            children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.',
+            style={'color': '#ffc12b', 'font-size': '18px'}
+        ),
     ]),
-    html.Div(id='tabs-content')
+
+    html.Div(style={'flex': '1'}, children=[
+        html.H2("Visualisation de la disponibilité des vélos et des places pour remise des vélos.", style=styles),
+        dcc.Tabs(id="tabs", value='tab-1', children=[
+            dcc.Tab(label='Carte des vélos disponibles', value='tab-1', style=inactive_tab_style,
+                    selected_style=active_tab_style),
+            dcc.Tab(label='Carte des places disponibles pour remise des vélos', value='tab-2',
+                    style=inactive_tab_style, selected_style=active_tab_style),
+        ]),
+        html.Div(id='tabs-content')
+    ])
 ])
 
 
 @app.callback(
     Output('tabs-content', 'children'),
-    [Input('tabs', 'value')]
+    [Input('tabs', 'value'),
+     Input('submit-button', 'n_clicks')],
+    [State('adresse-depart', 'value')]
 )
-def render_content(tab):
-    if tab == 'tab-1':
-        return html.Div([
-            dcc.Graph(figure=fig_recup)
-        ])
-    elif tab == 'tab-2':
-        return html.Div([
-            dcc.Graph(figure=fig_remise)
-        ])
+def render_content(tab, n_clicks, adresse_depart):
+    if n_clicks and adresse_depart:
+        if tab == 'tab-1':
+            return html.Div([
+                dcc.Graph(figure=fig_recup)
+            ])
+        elif tab == 'tab-2':
+            return html.Div([
+                dcc.Graph(figure=fig_remise)
+            ])
+    return html.Div()
 
 
 @app.callback(
