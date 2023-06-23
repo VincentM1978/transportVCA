@@ -63,7 +63,7 @@ fig_remise.update_layout(mapbox_style='carto-positron',
                          hoverlabel=dict(bgcolor='white', font_size=12, font_family='Arial'))
 
 # Création de l'application Dash
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, meta_tags=[{'name': 'viewport','content': 'width=device-width, initial-scale=1.0'}])
 server = app.server
 
 # Définir le titre de l'application
