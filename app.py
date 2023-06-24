@@ -99,7 +99,7 @@ def calculate_closest_parkings(address_reference):
                                                 zoom=15)
 
                 fig_parkings.update_layout(mapbox_style='carto-positron',
-                                        mapbox_center=dict(lat=lat, lon=lon),
+                                        mapbox_center=dict(lat=43.599, lon=1.436),
                                         mapbox_zoom=15,
                                         width=1000,
                                         height=600,
