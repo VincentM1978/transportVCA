@@ -1,3 +1,4 @@
+import re
 import dash
 from dash import dcc
 from dash import html
@@ -7,6 +8,7 @@ import plotly.express as px
 from dash.dependencies import Input, Output, State
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
+from geopy import Point
 
 
 # Fonction pour calculer les 5 parkings les plus proches
@@ -49,6 +51,10 @@ def calculate_closest_parkings(address_reference):
     df_parking_relais_fields['lat&lon'] = df_parking_relais_fields['lat&lon'].apply(lambda x : x[1:])
     # Supprimer le dernier crochet
     df_parking_relais_fields['lat&lon'] = df_parking_relais_fields['lat&lon'].apply(lambda x : x[:-1])
+    # Nettoyage de la colonne 'lat&lon' dans df_parking_nettoye
+    df_parking_nettoye['lat&lon'] = df_parking_nettoye['lat&lon'].apply(lambda x: re.sub(r'[^\d.]+', '', x))
+    # Nettoyage de la colonne 'lat&lon' dans df_parking_relais_fields
+    df_parking_relais_fields['lat&lon'] = df_parking_relais_fields['lat&lon'].apply(lambda x: re.sub(r'[^\d.]+', '', x))
 
     df_parking_nettoye2 = df_parking_nettoye
     df_parking_nettoye2['relais ?'] = 'non'
@@ -66,8 +72,13 @@ def calculate_closest_parkings(address_reference):
         coordinates_to_compare = df_parking_global['lat&lon']
 
         for coordinate_to_compare in coordinates_to_compare:
-            distance = geodesic(coordinates_reference, coordinate_to_compare).meters
-            distances[coordinate_to_compare] = distance
+            try:
+                point_compare = Point(coordinate_to_compare)
+                distance = geodesic(coordinates_reference, point_compare).meters
+                distances[coordinate_to_compare] = distance
+            except ValueError:
+        # Ignorer les valeurs incorrectes et passer à la suivante
+                continue
 
         closest_parkings = sorted(distances, key=distances.get)[:5]
 
@@ -95,10 +106,10 @@ def calculate_closest_parkings(address_reference):
 
                 df_5_parkings_proches = pd.concat([df_5_parkings_proches, temp_df], ignore_index=True)
                 # Création de la carte pour les parkings
-                fig_parkings = px.scatter_mapbox(df_5_parkings_proches, lat='lat', lon='lon', hover_name='Parkings',                                              
+            fig_parkings = px.scatter_mapbox(df_5_parkings_proches, lat='lat', lon='lon', hover_name='Parkings',                                              
                                                 zoom=15)
 
-                fig_parkings.update_layout(mapbox_style='carto-positron',
+            fig_parkings.update_layout(mapbox_style='carto-positron',
                                         mapbox_center=dict(lat=43.599, lon=1.436),
                                         mapbox_zoom=15,
                                         width=1000,
@@ -154,7 +165,7 @@ fig_parkings.update_layout(mapbox_style='carto-positron',
                         width=1000,
                         height=600,
                         coloraxis_colorscale="RdYlBu",
-                        hoverlabel=dict(bgcolor='white', font_size=12, font_family='Arial'))
+                        hoverlabel=dict(bgcolor='red', font_size=12, font_family='Arial'))
 
 # Création de la carte pour les vélos disponibles
 fig_recup = px.scatter_mapbox(df_velo_temps_reel, lat='lat', lon='lon', hover_name='name',
