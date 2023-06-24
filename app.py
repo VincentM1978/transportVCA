@@ -185,7 +185,7 @@ fig_remise.update_layout(mapbox_style='carto-positron',
 
 # Création de l'application Dash
 app = dash.Dash(__name__)
-
+server = app.server
 
 
 # Styles CSS personnalisés pour le titre et l'arrière-plan
