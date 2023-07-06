@@ -12,8 +12,9 @@ from geopy.distance import geodesic
 from geopy import Point
 import folium
 import pytz
+from pyroutelib3 import Router
 
-adresse_depart='place arnaud bernard, 31000, Toulouse'
+adresse_depart='14 rue bayard, 31000, Toulouse'
 
 ###################################################  PARKINGS #####################################################
 
@@ -113,7 +114,7 @@ df_velo_temps_reel['adresse_complete'] = df_velo_temps_reel['address']+", , Toul
 df_velo_temps_reel['lat&lon'] = df_velo_temps_reel.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
 
 # POUR LE RESTE
-adresse_du_parking_choisi = 'Place du Capitole, 31000 Toulouse'
+adresse_du_parking_choisi = 'Place Jeanne d\'arc, 31000 Toulouse'
 # Adresse de référence
 address_reference = adresse_du_parking_choisi
 
@@ -164,7 +165,7 @@ df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns = {0 : 
 df_station_velo_plus_proche['Distance'] = df_station_velo_plus_proche['Distance'].astype(int)
 
 
-###################################################  CRÉATION DE LA CARTE DES 5 PARKINGS LES PLUS PROCHES #####################################################
+###################################################  CRÉATION DU DF DES 5 PARKINGS LES PLUS PROCHES #####################################################
 
 # Liste des coordonnées à comparer
 coordinates_to_compare = df_parking_global['lat&lon']
@@ -242,8 +243,6 @@ df_5_parkings_proches_dash = df_5_parkings_proches_dash.reset_index(drop=True)
 df_5_parkings_proches_dash.index = df_5_parkings_proches_dash.index + 1
 
 
-
-
 ###################################################  CRÉATION DES CARTES #####################################################
 
 # Créer une carte folium avec les 5 parkings de notre DF df_5_parkings_proches
@@ -257,6 +256,69 @@ for i in range(5):
     folium.Marker(location=[lat_parking, lon_parking], popup="<i>Nom du parking :\n</i>"+df_5_parkings_proches['Parkings'][i]).add_to(carte_5_parkings_les_plus_proches)
 
 carte_5_parkings_les_plus_proches.save('carte_5_parkings_les_plus_proches.html')
+
+######################################## AFFICHER LA STATION LA PLUS PROCHE ET LE PARCOURS POUR ALLER A LA STATION LA PLUS PROCHE DE SA DESTINATION ########################################
+
+# Création de l'objet Router
+router = Router("foot")
+
+# EN AMONT NOUS AVONS RECUPERE LE PARKING CHOISI : ici pour l'exemple
+nom_du_parking_choisi = 'Jeanne d\'Arc'
+
+# Sélection des noms de départ et d'arrivée (exemple)
+depart_name = nom_du_parking_choisi
+arrivee_name = Station_velo_la_plus_proche
+
+# Rechercher les lignes correspondant aux noms de départ et d'arrivée dans le DataFrame (df)
+#depart_row = df_parking_global[df_parking_global['Parkings'] == depart_name].iloc[0]
+arrivee_row = df_velo_temps_reel[df_velo_temps_reel['name'] == arrivee_name].iloc[0]
+
+# Récupérer les coordonnées latitude/longitude du point de départ :
+#depart_lat = depart_row['ylat']
+#depart_lon = depart_row['xlong']
+
+# POUR L'EXEMPLE ici et ne pas être obligé de recharger tout le DF parking global sur l'autre notebook
+depart_lat = df_5_parkings_proches['lat'][0]
+depart_lon = df_5_parkings_proches['lon'][0]
+
+# Récupérer les coordonnées latitude/longitude du point d'arrivée
+arrivee_lat = arrivee_row['lat']
+arrivee_lon = arrivee_row['lon']
+
+# Rechercher les nœuds de départ et d'arrivée
+depart = router.findNode(depart_lat, depart_lon)
+arrivee = router.findNode(arrivee_lat, arrivee_lon)
+
+# Calculer l'itinéraire
+status, itineraire = router.doRoute(depart, arrivee)
+
+if status == 'success':
+    # Convertir les coordonnées des nœuds en latitude/longitude
+    itineraire_coordonnees = [router.nodeLatLon(node) for node in itineraire]
+
+    # Créer la carte avec le point de départ, le point d'arrivée et l'itinéraire
+    carte = folium.Map(location=[depart_lat, depart_lon], zoom_start=13)
+
+    # Ajouter le marqueur pour le point de départ
+    folium.Marker([depart_lat, depart_lon], popup="Point de départ").add_to(carte)
+
+    # Ajouter le marqueur pour le point d'arrivée
+    folium.Marker([arrivee_lat, arrivee_lon], popup="Point d'arrivée").add_to(carte)
+
+    # Ajouter le tracé de l'itinéraire à la carte
+    folium.PolyLine(
+        locations=itineraire_coordonnees,
+        color="blue",
+        weight=2.5,
+        opacity=1
+    ).add_to(carte)
+
+    # Afficher la carte dans la cellule Colab
+    carte.save('carte_itineraire.html')
+else:
+    print("Impossible de trouver un itinéraire pour les points spécifiés.")
+
+
 
 
 ############################################### Création de l'application Dash ###############################################
@@ -274,10 +336,9 @@ styles = {
 page_style = {
         'backgroundColor': '#a5282b',
         'width': '100%',
-        'height': '100vh',  # 'vh' signifie viewport height (hauteur de la fenêtre du navigateur)
+        'height': '100%',  # 'vh' signifie viewport height (hauteur de la fenêtre du navigateur)
         'display': 'flex',  # Utiliser flexbox pour aligner et centrer le contenu
         'flexDirection': 'column',  # Aligner le contenu en colonne
-        # Centrer verticalement le contenu
         'alignItems': 'center',  # Centrer horizontalement le contenu
     }
 
@@ -384,7 +445,7 @@ app.layout = html.Div(style=page_style,
 
 
 
-###############################################  CALLBACKS #####################################################
+###############################################  CALLBACKS ET FONCTIONS #####################################################
 
 @app.callback(
     Output('adresse-depart', 'value'),
@@ -394,33 +455,34 @@ app.layout = html.Div(style=page_style,
      Input('ville', 'value')]
 )
 
+def update_adresse_depart(numero, voie, code_postal="31000", ville="Toulouse"):
+    adresse_depart = f"{numero} {voie}, {code_postal} {ville}"
+    return adresse_depart
+
+
 @app.callback(
     Output('tabs-content', 'children'),
     [Input('tabs', 'value'),
      Input('parking-button', 'n_clicks')]
 )
 
-###############################################  FONCTIONS #####################################################
-
-def update_adresse_depart(numero, voie, code_postal="31000", ville="Toulouse"):
-    adresse_depart = f"{numero} {voie}, {code_postal} {ville}"
-    return adresse_depart
-
 def render_content(tab, n_clicks):
     if tab == 'tab-0':
         # Assuming 'df_station_velo_plus_proche' is already defined
         if df_station_velo_plus_proche is not None:
-            return dash_table.DataTable(
-                id='df_station_velo_plus_proche',
-                data=df_station_velo_plus_proche.transpose().to_dict('records'),
-                style_data={'color': '#ffc12b', 'backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
-                style_cell={'textAlign': 'center'}
-            )
+            return html.Div(style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'}, children=[
+        html.Div([html.Iframe(id='carte_itineraire', srcDoc=open('carte_itineraire.html', 'r').read(),
+                               width='450', height='450')]),
+        html.Div([html.Hr(style={'width': '15%', 'margin': '100px 0'})]),             
+        html.Div([dash_table.DataTable(id='df_station_velo_plus_proche', data=df_station_velo_plus_proche.to_dict('records'),
+                                   style_data={'color': '#ffc12b','backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
+                                   style_cell={'textAlign': 'center'})])]),
+        
+            
     elif tab == 'tab-1':
-        return html.Div([
-            dcc.Label("tab-1", style=styles),
-        ])
+        return "Team Tisséo"
     return html.Div()
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
