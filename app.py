@@ -65,8 +65,14 @@ df_parking_global = pd.concat([df_parking_relais_nettoye, df_parking_indigo_nett
 
 ################################################################ VÉLOS ##############################################################
 
-df_info = pd.read_json("https://transport.data.gouv.fr/gbfs/toulouse/station_information.json")
-df_statut = pd.read_json("https://transport.data.gouv.fr/gbfs/toulouse/station_status.json")
+# IMPORTER LES DONNEES DE L'API VELOS DE TOULOUSE ET LES STOCKER DANS UN DF
+
+lien_information = "https://transport.data.gouv.fr/gbfs/toulouse/station_information.json"
+lien_status = "https://transport.data.gouv.fr/gbfs/toulouse/station_status.json"
+
+# Charger le fichier JSON en tant que DataFrame
+df_info = pd.read_json(lien_information)
+df_statut = pd.read_json(lien_status)
 
 # Affichage de l'ensemble des données de la colonne Data pour récupérer les stations
 stations_list = df_info['data'][0]
@@ -106,97 +112,56 @@ df_velo_temps_reel['adresse_complete'] = df_velo_temps_reel['address']+", , Toul
 # concatener la latitude avec la longitude
 df_velo_temps_reel['lat&lon'] = df_velo_temps_reel.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
 
-# Initialiser le géocodeur une seule fois en tant que variable globale
+# POUR LE RESTE
+adresse_du_parking_choisi = 'Place du Capitole, 31000 Toulouse'
+# Adresse de référence
+address_reference = adresse_du_parking_choisi
+
+# Liste des coordonnées à comparer
+coordinates_to_compare = df_velo_temps_reel['lat&lon']
+
+# Initialisation du géocodeur
 geolocator = Nominatim(user_agent="my_app")
 
+# Géocodage de l'adresse de référence
+location_reference = geolocator.geocode(address_reference)
 
-def load_data():
-    lien_information = "https://transport.data.gouv.fr/gbfs/toulouse/station_information.json"
-    lien_status = "https://transport.data.gouv.fr/gbfs/toulouse/station_status.json"
+# Extraction des coordonnées de l'adresse de référence
+coordinates_reference = (location_reference.latitude, location_reference.longitude)
 
-    df_info = pd.read_json(lien_information)
-    df_statut = pd.read_json(lien_status)
+# Initialisation des variables pour le calcul de la distance minimale
+min_distance = float('inf')
+closest_address = None
 
-    stations_list = df_info['data'][0]
-    df_stations = pd.DataFrame(stations_list)
+# Parcours des adresses à comparer
+for coordinate_to_compare in coordinates_to_compare:
+    distance = geodesic(coordinates_reference, coordinate_to_compare).meters
 
-    statut_list = df_statut['data'][0]
-    df_disponibilites = pd.DataFrame(statut_list)
+    # Vérification si la distance est plus petite que la distance minimale actuelle
+    if distance < min_distance:
+        min_distance = distance
+        closest_address = coordinate_to_compare
 
-    df_disponibilites['last_reported'] = pd.to_datetime(df_disponibilites['last_reported'], unit='s').dt.tz_localize('UTC')
-    paris_tz = pytz.timezone('Europe/Paris')
-    df_disponibilites['last_reported'] = df_disponibilites['last_reported'].dt.tz_convert(paris_tz)
-    df_disponibilites['last_reported'] = df_disponibilites['last_reported'].dt.strftime('%d/%m/%Y %H:%M:%S')
-
-    df_velo_temps_reel = pd.merge(df_stations,
-        df_disponibilites,
-        how="left",
-        left_on='station_id',
-        right_on='station_id')
-
-    df_velo_temps_reel['name'] = df_velo_temps_reel['name'].apply(lambda x : x[8:])
-    df_velo_temps_reel['adresse_complete'] = df_velo_temps_reel['address'] + ", , Toulouse"
-    df_velo_temps_reel['lat&lon'] = df_velo_temps_reel.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
-
-    return df_velo_temps_reel
-
-def find_closest_station(address_reference, df_velo_temps_reel):
-    geolocator = Nominatim(user_agent="my_app")
-    location_reference = geolocator.geocode(address_reference)
-    coordinates_reference = (location_reference.latitude, location_reference.longitude)
-
-    min_distance = float('inf')
-    closest_address = None
-
-    for coordinate_to_compare in df_velo_temps_reel['lat&lon']:
-        distance = geodesic(coordinates_reference, coordinate_to_compare).meters
-
-        if distance < min_distance:
-            min_distance = distance
-            closest_address = coordinate_to_compare
-
-    return closest_address
+# Affichage des éléments suivants :
+list_1 = []
+list_2 = []
+list_3 = []
+list_4 = []
+list_5 = []
+Station_velo_la_plus_proche = df_velo_temps_reel['name'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+list_1.append(Station_velo_la_plus_proche)
+nb_velos_dispos = df_velo_temps_reel['num_bikes_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+list_2.append(nb_velos_dispos)
+nb_bornes_dispos = df_velo_temps_reel['num_docks_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+list_3.append(nb_bornes_dispos)
+adresse_de_la_station = df_velo_temps_reel['address'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+list_4.append(adresse_de_la_station)
+list_5.append(min_distance)
 
 
-
-def get_station_info(closest_address, df_velo_temps_reel):
-    Station_velo_la_plus_proche = df_velo_temps_reel['name'][df_velo_temps_reel['lat&lon'] == closest_address].item()
-    nb_velos_dispos = df_velo_temps_reel['num_bikes_available'][df_velo_temps_reel['lat&lon'] == closest_address].item()
-    nb_bornes_dispos = df_velo_temps_reel['num_docks_available'][df_velo_temps_reel['lat&lon'] == closest_address].item()
-    adresse_de_la_station = df_velo_temps_reel['address'][df_velo_temps_reel['lat&lon'] == closest_address].item()
-    distance = int(df_velo_temps_reel['distance'][df_velo_temps_reel['lat&lon'] == closest_address].item())
-
-    df_station_velo_plus_proche = pd.DataFrame({
-        'Nom station': [Station_velo_la_plus_proche],
-        'Nombre de vélos disponibles': [nb_velos_dispos],
-        'Nombre de bornes disponibles': [nb_bornes_dispos],
-        'Adresse': [adresse_de_la_station],
-        'Distance': [distance]
-    })
-
-    return df_station_velo_plus_proche
-
-def create_map(df_velo_temps_reel):
-    fig = px.scatter_mapbox(
-        df_velo_temps_reel,
-        lat="lat",
-        lon="lon",
-        hover_name="name",
-        hover_data=["num_bikes_available", "num_docks_available"],
-        color_continuous_scale=px.colors.cyclical.IceFire,
-        size="num_bikes_available",
-        size_max=15,
-        zoom=12
-    )
-
-    fig.update_layout(
-        mapbox_style="carto-positron",
-        mapbox_zoom=12,
-        mapbox_center={"lat": 43.6043, "lon": 1.4437},  # Coordonnées de Toulouse
-        margin={"r": 0, "t": 0, "l": 0, "b": 0}
-    )
-
-    return fig
+df_station_velo_plus_proche = pd.concat([pd.Series(list_1), pd.Series(list_2), pd.Series(list_3), pd.Series(list_4),pd.Series(list_5)], axis=1)
+df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns = {0 : 'Nom station', 1 : 'Nombre de vélos disponibles', 2 : 'Nombre de bornes disponibles', 3 : 'Adresse' , 4 : 'Distance'})
+df_station_velo_plus_proche['Distance'] = df_station_velo_plus_proche['Distance'].astype(int)
 
 
 ###################################################  CRÉATION DE LA CARTE DES 5 PARKINGS LES PLUS PROCHES #####################################################
@@ -252,28 +217,21 @@ if location_reference is not None:
             # print("{:.0f} mètres".format(distance))
 
             # Ajout du parking au DataFrame
-            df_5_parkings_proches = df_5_parkings_proches.append({
-                'Parkings': nom,
-                'Type de parking': type_parking,
-                'Gratuit': gratuit,
-                'Nb_places_totales': nb_places,
-                'Adresse': adresse,
-                'lat' : lat,
-                'lon' : lon,
-                'Distance(m)' : round(distance)
-
-            }, ignore_index=True)
+            df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
+                'Parkings': [nom],
+                'Type de parking': [type_parking],
+                'Gratuit': [gratuit],
+                'Nb_places_totales': [nb_places],
+                'Adresse': [adresse],
+                'lat': [lat],
+                'lon': [lon],
+                'Distance(m)': [round(distance)]
+            })], ignore_index=True)
 
 
         # Stocker les 5 parkings les plus proches dans une liste pour créer une menu déroulant
         menu_deroulant_parkings = df_parking_global[df_parking_global['lat&lon'].isin(closest_parkings)]['nom'].tolist()
-        #print("Parkings les plus proches :", nom_parking)
-
-    else:
-        print("Aucune adresse trouvée parmi la liste")
-
-else:
-    print("Adresse de référence introuvable")
+        # print("Parkings les plus proches :", nom_parking)
 
 
 # Nous supprimons les deux colonnes lat & lon 
@@ -302,10 +260,8 @@ carte_5_parkings_les_plus_proches.save('carte_5_parkings_les_plus_proches.html')
 
 
 ############################################### Création de l'application Dash ###############################################
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(__name__, suppress_callback_exceptions=True, meta_tags=[{'name': 'viewport','content': 'width=device-width, initial-scale=1.0'}]) # permet a notre app d'etre responsive, s'adapter a lecran utilise)
 server = app.server
-app.title = 'Vélos à Toulouse' # Titre de l'onglet de l'application
-
 
 ######################################### Styles CSS personnalisés #########################################
 styles = {
@@ -321,7 +277,7 @@ page_style = {
         'height': '100vh',  # 'vh' signifie viewport height (hauteur de la fenêtre du navigateur)
         'display': 'flex',  # Utiliser flexbox pour aligner et centrer le contenu
         'flexDirection': 'column',  # Aligner le contenu en colonne
-        'justifyContent': 'center',  # Centrer verticalement le contenu
+        # Centrer verticalement le contenu
         'alignItems': 'center',  # Centrer horizontalement le contenu
     }
 
@@ -356,12 +312,12 @@ button_style = {
             'font-size': '18px',
             'cursor': 'pointer'
         }
+
+
 ###################################################  LAYOUT #####################################################
 
-app.layout = html.Div(
-    style=page_style, children=[
-    html.H1(children="Transports Toulouse VCA", style=styles),
-    html.Hr(style=line_style),
+app.layout = html.Div(style=page_style,
+    children=[html.Div(children=[html.H1(children="Transports Toulouse VCA", style=styles)]),
     html.Hr(style=line_style),
     html.H3(children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.'),
     html.Div(style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'},
@@ -413,21 +369,18 @@ app.layout = html.Div(
     html.H3(children='Sélectionnez le parking dans lequel vous souhaitez vous garer.'),
     dcc.Dropdown(menu_deroulant_parkings, id='parking-dropdown', value='Choisissez votre parking', style = {'width': '60%', 'margin': '10px'}),
     html.Button("J'ai choisi mon parking", id='parking-button', style=button_style),
-    html.Div([
-    dcc.Tabs(id="tabs", value='tab-0', children=[
-        dcc.Tab(label='Team Vélo', value='tab-0', style={'display': 'inline-block'}),
-        dcc.Tab(label='Team Tisséo', value='tab-1', style={'display': 'inline-block'}),
-    ]),
-    html.Div(id='tabs-content')]),
-    html.Div([
-    html.H1('Station de vélo la plus proche'),
-    dcc.Graph(id='city-map', figure=create_map(df_velo_temps_reel)),  # Utilisez votre fonction create_map ici
-    html.Hr(),
-    html.H3('Informations sur la station de vélo la plus proche'),
-    dash_table.DataTable(id='data-table', columns=[{'name': col, 'id': col} for col in df_velo_temps_reel.columns],
-                 data=[{}])]
-    )
-])
+    html.Div(style={'flex': '1'}, children=[
+        html.H2("Team vélo ou Team Tisséo ?", style=styles),
+        dcc.Tabs(id="tabs", value='tab-1', children=[
+            dcc.Tab(label='Team Vélo', value='tab-0', style=inactive_tab_style,
+                    selected_style=active_tab_style),
+            dcc.Tab(label='Team Tisséo', value='tab-1', style=inactive_tab_style,
+                    selected_style=active_tab_style),
+        ]),
+        html.Div(id='tabs-content')
+    ])
+
+    ])
 
 
 
@@ -442,15 +395,9 @@ app.layout = html.Div(
 )
 
 @app.callback(
-    Output('city-map', 'figure'),
-    Output('data-table', 'data'),
-    Input('adresse-input', 'value')
-)
-
-
-@app.callback(
     Output('tabs-content', 'children'),
-    Input('tabs', 'value')
+    [Input('tabs', 'value'),
+     Input('parking-button', 'n_clicks')]
 )
 
 ###############################################  FONCTIONS #####################################################
@@ -459,30 +406,21 @@ def update_adresse_depart(numero, voie, code_postal="31000", ville="Toulouse"):
     adresse_depart = f"{numero} {voie}, {code_postal} {ville}"
     return adresse_depart
 
-def update_map_data_table(selected_address):
-    closest_address = find_closest_station(selected_address, df_velo_temps_reel)
-    df_station_velo_plus_proche = get_station_info(closest_address, df_velo_temps_reel)
-
-    # Create the map
-    fig = create_map(df_velo_temps_reel)
-
-    return fig, df_station_velo_plus_proche.to_dict('records')
-
-
-def render_content(tab):
+def render_content(tab, n_clicks):
     if tab == 'tab-0':
-        return html.Div([
-            dcc.Graph(id='city-map', figure=create_map(df_velo_temps_reel)),
-            html.Hr(),
-            html.H3('Informations sur la station de vélo la plus proche'),
-            dash_table.DataTable(
-                id='data-table',
-                columns=[{'name': col, 'id': col} for col in df_velo_temps_reel.columns],
-                data=[{}]
+        # Assuming 'df_station_velo_plus_proche' is already defined
+        if df_station_velo_plus_proche is not None:
+            return dash_table.DataTable(
+                id='df_station_velo_plus_proche',
+                data=df_station_velo_plus_proche.transpose().to_dict('records'),
+                style_data={'color': '#ffc12b', 'backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
+                style_cell={'textAlign': 'center'}
             )
-        ])
     elif tab == 'tab-1':
-        return html.Div("Hello World")
+        return html.Div([
+            dcc.Label("tab-1", style=styles),
+        ])
+    return html.Div()
 
 if __name__ == '__main__':
     app.run_server(debug=True)
