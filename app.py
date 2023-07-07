@@ -449,7 +449,7 @@ else:
 
 
 ############################################### Création de l'application Dash ###############################################
-app = dash.Dash(__name__, suppress_callback_exceptions=True, meta_tags=[{'name': 'viewport','content': 'width=device-width, initial-scale=1.0'}]) # permet a notre app d'etre responsive, s'adapter a lecran utilise)
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
 
 ######################################### Styles CSS personnalisés #########################################
