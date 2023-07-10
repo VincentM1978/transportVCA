@@ -9,13 +9,15 @@ import plotly.express as px
 from dash.dependencies import Input, Output, State
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
+import plotly.graph_objects as go
 from geopy import Point
 import folium
 import pytz
 from pyroutelib3 import Router
+import dash_bootstrap_components as dbc
 
-adresse_depart='14 rue bayard, 31000, Toulouse'
-
+adresse_depart='rue bayard, 14, Toulouse'
+starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 ###################################################  PARKINGS #####################################################
 
 
@@ -167,80 +169,7 @@ df_station_velo_plus_proche['Distance'] = df_station_velo_plus_proche['Distance'
 
 ###################################################  CRÉATION DU DF DES 5 PARKINGS LES PLUS PROCHES #####################################################
 
-# Liste des coordonnées à comparer
-coordinates_to_compare = df_parking_global['lat&lon']
 
-# Initialisation du géocodeur
-geolocator = Nominatim(user_agent="my_app")
-
-# Géocodage de l'adresse renseignée par l'utilisateur
-location_reference = geolocator.geocode(adresse_depart)
-
-# Vérification des coordonnées géographiques
-if location_reference is not None:
-
-    # Extraction des coordonnées de l'adresse de référence
-    coordinates_reference = (location_reference.latitude, location_reference.longitude)
-
-    # Initialisation du dictionnaire pour stocker les distances et les adresses
-    distances = {}
-
-    # Parcours des adresses à comparer
-    for coordinate_to_compare in coordinates_to_compare:
-        distance = geodesic(coordinates_reference, coordinate_to_compare).meters
-
-        # Stockage de la distance et de l'adresse dans le dictionnaire
-        distances[coordinate_to_compare] = distance
-
-    # Tri du dictionnaire par distance et récupération des 5 Parkings les plus proches
-    closest_parkings = sorted(distances, key=distances.get)[:5]
-
-    if closest_parkings:
-        # Création du DataFrame pour stocker les données des 5 parkings les plus proches
-        df_5_parkings_proches = pd.DataFrame(columns=['Parkings', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
-
-        # Parcours des parkings les plus proches
-        for parking in closest_parkings:
-            # Récupération des données du parking
-            parking_data = df_parking_global[df_parking_global['lat&lon'] == parking]
-
-            # Récupération des valeurs spécifiques
-            nom = parking_data['nom'].values[0]
-            type_parking = parking_data['type_ouvrage'].values[0]
-            gratuit = parking_data['gratuit'].values[0]
-            nb_places = parking_data['nb_voitures'].values[0]
-            adresse = parking_data['adresse'].values[0]
-            lat = parking_data['ylat'].values[0]
-            lon = parking_data['xlong'].values[0]
-
-            # Affichage de la distance
-            distance = distances[parking]
-            # print("{:.0f} mètres".format(distance))
-
-            # Ajout du parking au DataFrame
-            df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
-                'Parkings': [nom],
-                'Type de parking': [type_parking],
-                'Gratuit': [gratuit],
-                'Nb_places_totales': [nb_places],
-                'Adresse': [adresse],
-                'lat': [lat],
-                'lon': [lon],
-                'Distance(m)': [round(distance)]
-            })], ignore_index=True)
-
-
-        # Stocker les 5 parkings les plus proches dans une liste pour créer une menu déroulant
-        menu_deroulant_parkings = df_parking_global[df_parking_global['lat&lon'].isin(closest_parkings)]['nom'].tolist()
-        # print("Parkings les plus proches :", nom_parking)
-
-
-# Nous supprimons les deux colonnes lat & lon 
-df_5_parkings_proches_dash = df_5_parkings_proches.drop(columns=['lon', 'lat'], axis=1)
-
-# Faire démarrer l'indexation à 1 au lieu de 0   
-df_5_parkings_proches_dash = df_5_parkings_proches_dash.reset_index(drop=True)
-df_5_parkings_proches_dash.index = df_5_parkings_proches_dash.index + 1
 
 
 
@@ -290,19 +219,12 @@ df_stop_area_unique = df_line_final.drop_duplicates(subset = "id_stop_area")
 df_stop_area_unique = df_stop_area_unique[['cityName', 'id_stop_area', 'arret',  'lat&lon' ]]
 
 ##################################################### AFFICHER LES 5 STATIONS LES PLUS PROCHES DU PARKING #####################################################
-
+"""
 # Adresse de référence
 address_reference = df_5_parkings_proches_dash['Adresse'][1]
 
 # Liste des coordonnées à comparer
 coordinates_to_compare = df_stop_area_unique['lat&lon']
-
-# Initialisation du géocodeur
-geolocator = Nominatim(user_agent="my_app")
-
-# Géocodage de l'adresse de référence
-location_reference = geolocator.geocode(address_reference)
-
 
 # Vérification des coordonnées géographiques
 if location_reference is not None:
@@ -353,9 +275,11 @@ df_arrets_plus_proche = df_arrets_plus_proche.rename(columns = {0 : 'Nom station
 df_arrets_plus_proche['Distance en mètres'] = df_arrets_plus_proche['Distance en mètres'].astype(int)
 df_arrets_plus_proche[['lat', 'lon']] = df_arrets_plus_proche['Coordonnées GPS'].str.split(', ', expand=True).astype(float)
 
-
+"""
 
 ###################################################  CRÉATION DES CARTES #####################################################
+
+"""
 
 # Créer une carte folium avec les 5 parkings de notre DF df_5_parkings_proches
 carte_5_parkings_les_plus_proches = folium.Map(location=[lat, lon], zoom_start=15)
@@ -368,6 +292,7 @@ for i in range(5):
     folium.Marker(location=[lat_parking, lon_parking], popup="<i>Nom du parking :\n</i>"+df_5_parkings_proches['Parkings'][i]).add_to(carte_5_parkings_les_plus_proches)
 
 carte_5_parkings_les_plus_proches.save('carte_5_parkings_les_plus_proches.html')
+
 
 
 # Créer une carte folium avec les 5 stations de notre DF df_arrets_plus_proche
@@ -400,11 +325,6 @@ arrivee_name = Station_velo_la_plus_proche
 #depart_row = df_parking_global[df_parking_global['Parkings'] == depart_name].iloc[0]
 arrivee_row = df_velo_temps_reel[df_velo_temps_reel['name'] == arrivee_name].iloc[0]
 
-# Récupérer les coordonnées latitude/longitude du point de départ :
-#depart_lat = depart_row['ylat']
-#depart_lon = depart_row['xlong']
-
-# POUR L'EXEMPLE ici et ne pas être obligé de recharger tout le DF parking global sur l'autre notebook
 depart_lat = df_5_parkings_proches['lat'][0]
 depart_lon = df_5_parkings_proches['lon'][0]
 
@@ -446,22 +366,19 @@ else:
     print("Impossible de trouver un itinéraire pour les points spécifiés.")
 
 
-
+"""
 
 ############################################### Création de l'application Dash ###############################################
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.QUARTZ])
 server = app.server
 
 ######################################### Styles CSS personnalisés #########################################
 styles = {
-    'backgroundColor': '#a5282b',
-    'color': '#ffc12b',
     'textAlign': 'center',
     'padding': '20px'
 }
 
 page_style = {
-        'backgroundColor': '#a5282b',
         'width': '100%',
         'height': '100%',  # 'vh' signifie viewport height (hauteur de la fenêtre du navigateur)
         'display': 'flex',  # Utiliser flexbox pour aligner et centrer le contenu
@@ -469,21 +386,9 @@ page_style = {
         'alignItems': 'center',  # Centrer horizontalement le contenu
     }
 
-active_tab_style = {
-    'backgroundColor': '#ffc12b',
-    'color': '#a5282b',
-    'fontWeight': 'bold'
-}
-
-inactive_tab_style = {
-    'backgroundColor': '#a5282b',
-    'color': '#ffc12b',
-    'fontWeight': 'bold'
-}
-
 line_style = {
     'width': '100%',
-    'borderTop': '1px #ffc12b solid',
+    'borderTop': '1px white solid',
     'margin': '10px 0'
 }
 
@@ -493,9 +398,7 @@ input_style = {
 
 button_style = {
             'margin': '10px auto',
-            'backgroundColor': '#ffc12b',
-            'color': '#a5282b',
-            'border': 'none',
+            'border': 'double 3px white',
             'padding': '10px 20px',
             'font-size': '18px',
             'cursor': 'pointer'
@@ -504,34 +407,36 @@ button_style = {
 
 ###################################################  LAYOUT #####################################################
 
-app.layout =html.Div(style=page_style, children=[html.H1(children="Transports Toulouse VCA", style=styles),
-html.Hr(style=line_style),
-html.H3(children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.', style=styles),
-html.Div(style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'},children=[
-    html.Label("Numéro:", style=styles),dcc.Input(id='numero',placeholder='Entrez le numéro',type='text',style=input_style),
-    html.Label("Voie:", style=styles),dcc.Input(id='voie', placeholder='Entrez la voie',type='text',style=input_style),
-    html.Label("Code postal:", style=styles),dcc.Input(id='code-postal',placeholder='Entrez le code postal',type='number',value='31000',style=input_style),
-    html.Label("Ville:", style=styles),dcc.Input(id='ville',placeholder='Entrez la ville',type='text',value='Toulouse',style=input_style)]),
-dcc.Input(id="adresse-depart", type="text", disabled=True),
-html.Button('Rechercher',id='submit-button',style=button_style),
-html.Div([html.Iframe(id='carte_5_parkings_les_plus_proches', srcDoc=open('carte_5_parkings_les_plus_proches.html', 'r').read(),width='450', height='450')]),
-html.Div([html.Hr(style={'width': '100%', 'margin': '5px 0'})]),             
-html.Div([dash_table.DataTable(id='df_5_parkings_proches_dash', data=df_5_parkings_proches_dash.to_dict('records'),
-                        style_data={'color': '#ffc12b','backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
-                        style_cell={'textAlign': 'center'})]),
-html.Hr(style=line_style),
-html.H3(children='Sélectionnez le parking dans lequel vous souhaitez vous garer.', style=styles),
-dcc.Dropdown(menu_deroulant_parkings, id='parking-dropdown', value='Choisissez votre parking', style = {'width': '60%', 'margin': '10px'}),
-html.Button("J'ai choisi mon parking", id='parking-button', style=button_style),
-html.Div(style={'flex': '1'}, children=[
-    html.H2("Team vélo ou Team Tisséo ?", style=styles),
-    dcc.Tabs(id="tabs", value='tab-1', children=[
-    dcc.Tab(label='Team Vélo', value='tab-0', style=inactive_tab_style,
-        selected_style=active_tab_style),
-    dcc.Tab(label='Team Tisséo', value='tab-1', style=inactive_tab_style,
-        selected_style=active_tab_style),
-]),
-html.Div(id='tabs-content')
+app.layout =html.Div(style=page_style,
+                     children=[
+                         html.H1(children="Transports Toulouse VCA", style=styles),
+                         html.Hr(style=line_style),
+                         html.H3(children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.', style=styles),
+                         html.Div(style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'},
+                            children=[
+                                html.Label("Numéro:", style=styles),
+                                dcc.Input(id='numero',placeholder='Entrez le numéro',type='text',style=input_style),
+                                html.Label("Voie:", style=styles),
+                                dcc.Input(id='voie', placeholder='Entrez la voie',type='text',style=input_style),
+                                html.Label("Code postal:", style=styles),
+                                dcc.Input(id='code-postal',placeholder='Entrez le code postal',type='number',style=input_style),
+                                html.Label("Ville:", style=styles),
+                                dcc.Input(id='ville',placeholder='Entrez la ville',type='text',style=input_style)]),
+                                dcc.Input(id="adresse-depart", type="text", disabled=True),
+                                html.Button('Rechercher',id='submit-button',style=button_style),
+                                dcc.Graph(id='carte_parkings', figure = starting_carte),
+                                
+                        html.Hr(style=line_style),
+                        html.H3(children='Sélectionnez le parking dans lequel vous souhaitez vous garer.', style=styles),
+                        #dcc.Dropdown(menu_deroulant_parkings, id='parking-dropdown', value='Choisissez votre parking', style = {'width': '60%', 'margin': '10px'}),
+                        html.Button("J'ai choisi mon parking", id='parking-button', style=button_style),
+                        html.Div(style={'flex': '1'}, children=[
+                        html.H2("Team vélo ou Team Tisséo ?", style=styles),
+                         dcc.Tabs(id="tabs", value='tab-1', children=[
+                             dcc.Tab(label='Team Vélo', value='tab-0'),
+                             dcc.Tab(label='Team Tisséo', value='tab-1'),
+                             ]),
+                             html.Div(id='tabs-content')
 ])
 ])
 
@@ -540,16 +445,96 @@ html.Div(id='tabs-content')
 ###############################################  CALLBACKS ET FONCTIONS #####################################################
 
 @app.callback(
-    Output('adresse-depart', 'value'),
+    [Output('adresse-depart', 'value'),
+     Output('carte_parkings', 'figure')],
     [Input('numero', 'value'),
      Input('voie', 'value'),
      Input('code-postal', 'value'),
-     Input('ville', 'value')]
+     Input('ville', 'value'),
+     Input('submit-button', 'n_clicks')]
 )
 
-def update_adresse_depart(numero, voie, code_postal="31000", ville="Toulouse"):
+def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
     adresse_depart = f"{numero} {voie}, {code_postal} {ville}"
-    return adresse_depart
+    if n_clicks is not None:
+        location_reference = geolocator.geocode(adresse_depart)
+    else:
+        location_reference = None
+    if location_reference is not None:
+        coordinates_to_compare = df_parking_global['lat&lon']
+        coordinates_reference = (location_reference.latitude, location_reference.longitude)
+        distances = {}
+        for coordinate_to_compare in coordinates_to_compare:
+            distance = geodesic(coordinates_reference, coordinate_to_compare).meters
+            distances[coordinate_to_compare] = distance
+        closest_parkings = sorted(distances, key=distances.get)[:5]
+        if closest_parkings:
+            df_5_parkings_proches = pd.DataFrame(columns=['Parkings', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
+            for parking in closest_parkings:
+                parking_data = df_parking_global[df_parking_global['lat&lon'] == parking]
+                nom = parking_data['nom'].values[0]
+                type_parking = parking_data['type_ouvrage'].values[0]
+                gratuit = parking_data['gratuit'].values[0]
+                nb_places = parking_data['nb_voitures'].values[0]
+                adresse = parking_data['adresse'].values[0]
+                lat = parking_data['ylat'].values[0]
+                lon = parking_data['xlong'].values[0]
+                df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
+                    'Parkings': [nom],
+                    'Type de parking': [type_parking],
+                    'Gratuit': [gratuit],
+                    'Nb_places_totales': [nb_places],
+                    'Adresse': [adresse],
+                    'lat': [lat],
+                    'lon': [lon],
+                    'Distance(m)': [round(distance)]
+                })], ignore_index=True)
+            menu_deroulant_parkings = df_parking_global[df_parking_global['lat&lon'].isin(closest_parkings)]['nom'].tolist()
+            df_5_parkings_proches_dash = df_5_parkings_proches.drop(columns=['lon', 'lat'], axis=1).reset_index(drop=True).rename_axis('index').reset_index()
+            html.Div([dash_table.DataTable(id='df_5_parkings_proches_dash', data=df_5_parkings_proches_dash.to_dict('records'),
+                                    style_data={'color': '#ffc12b','backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
+                                    style_cell={'textAlign': 'center'})]),
+        
+            center_lat = lat
+            center_lon = lon
+
+            # Création de la figure
+            carte = go.Figure()
+
+            # Ajout des marqueurs pour les parkings
+            for i in range(5):
+                lat_parking = df_5_parkings_proches['lat'][i]
+                lon_parking = df_5_parkings_proches['lon'][i]
+                nom_parking = f'PARKING_{i + 1}'
+
+                carte.add_trace(go.Scattermapbox(
+                    lat=[lat_parking],
+                    lon=[lon_parking],
+                    mode='markers',
+                    marker=go.scattermapbox.Marker(
+                        size=15,
+                        color='blue',
+                        opacity=0.7),
+                    name=df_5_parkings_proches['Parkings'][i],
+                    text=["<b>Nom du parking:</b> " + df_5_parkings_proches['Parkings'][i]],
+                    hoverinfo='text'
+                ))
+
+            # Configuration de la carte
+            carte.update_layout(
+                mapbox_style='open-street-map',
+                mapbox_center_lon=center_lon,
+                mapbox_center_lat=center_lat,
+                mapbox=dict(
+                    zoom=15
+                )
+            )
+
+        return adresse_depart, carte
+    else:
+        return "Adresse non trouvée", starting_carte
+    
+    
 
 
 @app.callback(
@@ -571,6 +556,7 @@ def render_content(tab, n_clicks):
         
             
     elif tab == 'tab-1':
+        """
         if df_arrets_plus_proche is not None:
             return html.Div(style={'justifyContent': 'center', 'alignItems': 'center'}, children=[
         html.Div([html.Iframe(id='carte_tisseo', srcDoc=open('carte_tisseo.html', 'r').read(),style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'},
@@ -579,7 +565,7 @@ def render_content(tab, n_clicks):
         html.Div([dash_table.DataTable(id='df_arrets_plus_proche', data=df_arrets_plus_proche.to_dict('records'),
                                    style_data={'color': '#ffc12b','backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
                                    style_cell={'textAlign': 'center'})])]),
-        
+        """
     return html.Div()
 
 
