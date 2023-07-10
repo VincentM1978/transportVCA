@@ -8,3 +8,4 @@ geopy
 folium
 pytz
 pyroutelib3
+dash_bootstrap_components
