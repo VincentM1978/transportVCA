@@ -369,7 +369,7 @@ else:
 """
 
 ############################################### Création de l'application Dash ###############################################
-app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.QUARTZ])
+app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUMEN])
 server = app.server
 
 ######################################### Styles CSS personnalisés #########################################
