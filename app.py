@@ -249,7 +249,6 @@ app.layout =html.Div(style=page_style,
 
 def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
     adresse_depart = f"{numero} {voie}, {code_postal} {ville}"
-    #menu_deroulant_parkings = [{'label': parking, 'value': parking} for parking in df_parking_global['nom']]
 
     if n_clicks is not None:
         geolocator = Nominatim(user_agent="my_app")
@@ -487,7 +486,8 @@ def render_content( n_clicks, parking_choisi='Capitole'):
 
         return html.Div(children = [html.H4("La station la plus proche est : \n")]), carte_velo
 
-    else:html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
+    else:
+        html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
