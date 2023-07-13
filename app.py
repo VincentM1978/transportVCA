@@ -11,12 +11,13 @@ from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 import plotly.graph_objects as go
 from geopy import Point
-import folium
 import pytz
 from pyroutelib3 import Router
 import dash_bootstrap_components as dbc
 
 starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
+carte_velo = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
+carte_tec = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 
 ###################################################  PARKINGS #####################################################
 
@@ -63,6 +64,7 @@ df_parking_relais_nettoye['gestionnaire'] = 'Tisseo'
 
 # Concaténer les deux dataframes
 df_parking_global = pd.concat([df_parking_relais_nettoye, df_parking_indigo_nettoye], ignore_index=True)
+print(df_parking_global)
 menu_deroulant_parkings = df_parking_global['nom'].tolist()
 
 ################################################################ VÉLOS ##############################################################
@@ -114,58 +116,8 @@ df_velo_temps_reel['adresse_complete'] = df_velo_temps_reel['address']+", , Toul
 # concatener la latitude avec la longitude
 df_velo_temps_reel['lat&lon'] = df_velo_temps_reel.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
 
-# POUR LE RESTE
-adresse_du_parking_choisi = 'Place Jeanne d\'arc, 31000 Toulouse'
-# Adresse de référence
-address_reference = adresse_du_parking_choisi
 
-# Liste des coordonnées à comparer
-coordinates_to_compare = df_velo_temps_reel['lat&lon']
-
-# Initialisation du géocodeur
-geolocator = Nominatim(user_agent="my_app")
-
-# Géocodage de l'adresse de référence
-location_reference = geolocator.geocode(address_reference)
-
-# Extraction des coordonnées de l'adresse de référence
-coordinates_reference = (location_reference.latitude, location_reference.longitude)
-
-# Initialisation des variables pour le calcul de la distance minimale
-min_distance = float('inf')
-closest_address = None
-
-# Parcours des adresses à comparer
-for coordinate_to_compare in coordinates_to_compare:
-    distance = geodesic(coordinates_reference, coordinate_to_compare).meters
-
-    # Vérification si la distance est plus petite que la distance minimale actuelle
-    if distance < min_distance:
-        min_distance = distance
-        closest_address = coordinate_to_compare
-
-# Affichage des éléments suivants :
-list_1 = []
-list_2 = []
-list_3 = []
-list_4 = []
-list_5 = []
-Station_velo_la_plus_proche = df_velo_temps_reel['name'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-list_1.append(Station_velo_la_plus_proche)
-nb_velos_dispos = df_velo_temps_reel['num_bikes_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-list_2.append(nb_velos_dispos)
-nb_bornes_dispos = df_velo_temps_reel['num_docks_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-list_3.append(nb_bornes_dispos)
-adresse_de_la_station = df_velo_temps_reel['address'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-list_4.append(adresse_de_la_station)
-list_5.append(min_distance)
-
-
-df_station_velo_plus_proche = pd.concat([pd.Series(list_1), pd.Series(list_2), pd.Series(list_3), pd.Series(list_4),pd.Series(list_5)], axis=1)
-df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns = {0 : 'Nom station', 1 : 'Nombre de vélos disponibles', 2 : 'Nombre de bornes disponibles', 3 : 'Adresse' , 4 : 'Distance'})
-df_station_velo_plus_proche['Distance'] = df_station_velo_plus_proche['Distance'].astype(int)
-
-##################################################### CRÉATION DU DF DES 5 STATIONS LES PLUS PROCHE #####################################################
+##################################################### CRÉATION DU DF DES 5 STATIONS LES PLUS PROCHES #####################################################
 
 service_name = 'stop_areas'
 format_type = 'json'
@@ -179,8 +131,6 @@ data = response.json()
 df_stop_areas_coordonnees = pd.DataFrame(data)
 df_stop_areas_list_coordonnees = df_stop_areas_coordonnees['stopAreas'].values[0]
 df_arrets_coordonnees = pd.DataFrame(df_stop_areas_list_coordonnees)
-
-# MODIFIER NOTRE DATAFRAME
 
 # Suppression des dix premiers caractères de la colonne "id"
 df_arrets_coordonnees['id'] = df_arrets_coordonnees['id'].apply(lambda x : x[10:])
@@ -210,158 +160,9 @@ df_stop_area_unique = df_line_final.drop_duplicates(subset = "id_stop_area")
 # Garder uniquement les colonnes souhaitées
 df_stop_area_unique = df_stop_area_unique[['cityName', 'id_stop_area', 'arret',  'lat&lon' ]]
 
-##################################################### AFFICHER LES 5 STATIONS LES PLUS PROCHES DU PARKING #####################################################
-"""
-# Adresse de référence
-address_reference = df_5_parkings_proches_dash['Adresse'][1]
-
-# Liste des coordonnées à comparer
-coordinates_to_compare = df_stop_area_unique['lat&lon']
-
-# Vérification des coordonnées géographiques
-if location_reference is not None:
-
-   # Extraction des coordonnées de l'adresse de référence
-   coordinates_reference = (location_reference.latitude, location_reference.longitude)
-
-   # Initialisation du dictionnaire pour stocker les distances et les adresses
-   distances = {}
-
-   # Parcours des adresses à comparer
-   for coordinate_to_compare in coordinates_to_compare:
-      distance = geodesic(coordinates_reference, coordinate_to_compare).meters
-
-      # Stockage de la distance et de l'adresse dans le dictionnaire
-      distances[coordinate_to_compare] = distance
-
-   # Tri du dictionnaire par distance et récupération des 5 arrêts les plus proches
-   closest_stations = sorted(distances, key=distances.get)[:5]
-
-   if closest_stations :
-
-      # Affichage des éléments suivants :
-
-      closest_stops = df_stop_area_unique[df_stop_area_unique['lat&lon'].isin(closest_stations)]['arret'].tolist()
-      closest_stops_id = df_stop_area_unique[df_stop_area_unique['lat&lon'].isin(closest_stations)]['id_stop_area'].tolist()
-      LatLon_closest_stops = df_stop_area_unique[df_stop_area_unique['lat&lon'].isin(closest_stations)]['lat&lon'].tolist()
-      print("Arrêts les plus proches :", closest_stops)
-      print("id les plus proches :", closest_stops_id)
-      print("lat&lon les plus proches :", LatLon_closest_stops)
-
-      print("Distances :")
-      list_distance = []
-      for station in closest_stations:
-          distance = distances[station]
-          print("{:.0f} mètres".format(distance))
-          list_distance.append(distances[station])  
-
-   else:
-      print("Aucune adresse trouvée parmi la liste")
-else:
-    print("Adresse de référence introuvable")
-
-# Création du dataframe des arrêts les plus proches
-
-df_arrets_plus_proche = pd.concat([pd.Series(closest_stops), pd.Series(closest_stops_id), pd.Series(list_distance), pd.Series(LatLon_closest_stops)], axis=1)
-df_arrets_plus_proche = df_arrets_plus_proche.rename(columns = {0 : 'Nom station', 1 : 'ID de la station', 2 : 'Distance en mètres', 3 : 'Coordonnées GPS'})
-df_arrets_plus_proche['Distance en mètres'] = df_arrets_plus_proche['Distance en mètres'].astype(int)
-df_arrets_plus_proche[['lat', 'lon']] = df_arrets_plus_proche['Coordonnées GPS'].str.split(', ', expand=True).astype(float)
-
-"""
-
-###################################################  CRÉATION DES CARTES #####################################################
-
-"""
-
-# Créer une carte folium avec les 5 parkings de notre DF df_5_parkings_proches
-carte_5_parkings_les_plus_proches = folium.Map(location=[lat, lon], zoom_start=15)
-
-for i in range(5):
-    lat_parking = df_5_parkings_proches['lat'][i]
-    lon_parking = df_5_parkings_proches['lon'][i]
-    nom_parking = f'PARKING_{i + 1}'
-
-    folium.Marker(location=[lat_parking, lon_parking], popup="<i>Nom du parking :\n</i>"+df_5_parkings_proches['Parkings'][i]).add_to(carte_5_parkings_les_plus_proches)
-
-carte_5_parkings_les_plus_proches.save('carte_5_parkings_les_plus_proches.html')
-
-
-
-# Créer une carte folium avec les 5 stations de notre DF df_arrets_plus_proche
-carte_tisseo = folium.Map(location=[lat, lon], zoom_start=15)
-
-for i in range(5):
-    lat_station = df_arrets_plus_proche['lat'][i]
-    lon_station = df_arrets_plus_proche['lon'][i]
-    nom_station = f'STATION_{i + 1}'
-
-    folium.Marker(location=[lat_station, lon_station], popup="<i>Nom de la station :\n</i>"+df_arrets_plus_proche['Nom station'][i]).add_to(carte_tisseo)
-
-carte_tisseo.save('carte_tisseo.html')
-
-
-
-######################################## AFFICHER LA BORNE LA PLUS PROCHE ET LE PARCOURS POUR ALLER A LA BORNE LA PLUS PROCHE DU PARKING CHOISI ########################################
-
-# Création de l'objet Router
-router = Router("foot")
-
-# EN AMONT NOUS AVONS RECUPERE LE PARKING CHOISI : ici pour l'exemple
-nom_du_parking_choisi = 'Jeanne d\'Arc'
-
-# Sélection des noms de départ et d'arrivée (exemple)
-depart_name = nom_du_parking_choisi
-arrivee_name = Station_velo_la_plus_proche
-
-# Rechercher les lignes correspondant aux noms de départ et d'arrivée dans le DataFrame (df)
-#depart_row = df_parking_global[df_parking_global['Parkings'] == depart_name].iloc[0]
-arrivee_row = df_velo_temps_reel[df_velo_temps_reel['name'] == arrivee_name].iloc[0]
-
-depart_lat = df_5_parkings_proches['lat'][0]
-depart_lon = df_5_parkings_proches['lon'][0]
-
-# Récupérer les coordonnées latitude/longitude du point d'arrivée
-arrivee_lat = arrivee_row['lat']
-arrivee_lon = arrivee_row['lon']
-
-# Rechercher les nœuds de départ et d'arrivée
-depart = router.findNode(depart_lat, depart_lon)
-arrivee = router.findNode(arrivee_lat, arrivee_lon)
-
-# Calculer l'itinéraire
-status, itineraire = router.doRoute(depart, arrivee)
-
-if status == 'success':
-    # Convertir les coordonnées des nœuds en latitude/longitude
-    itineraire_coordonnees = [router.nodeLatLon(node) for node in itineraire]
-
-    # Créer la carte avec le point de départ, le point d'arrivée et l'itinéraire
-    carte = folium.Map(location=[depart_lat, depart_lon], zoom_start=13)
-
-    # Ajouter le marqueur pour le point de départ
-    folium.Marker([depart_lat, depart_lon], popup="Point de départ").add_to(carte)
-
-    # Ajouter le marqueur pour le point d'arrivée
-    folium.Marker([arrivee_lat, arrivee_lon], popup="Point d'arrivée").add_to(carte)
-
-    # Ajouter le tracé de l'itinéraire à la carte
-    folium.PolyLine(
-        locations=itineraire_coordonnees,
-        color="blue",
-        weight=2.5,
-        opacity=1
-    ).add_to(carte)
-
-    # Afficher la carte dans la cellule Colab
-    carte.save('carte_itineraire.html')
-else:
-    print("Impossible de trouver un itinéraire pour les points spécifiés.")
-
-
-"""
 
 ############################################### Création de l'application Dash ###############################################
-app = dash.Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.JOURNAL])
+app = dash.Dash(__name__, prevent_initial_callbacks='initial_duplicate', suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.JOURNAL])
 server = app.server
 
 ######################################### Styles CSS personnalisés #########################################
@@ -423,18 +224,13 @@ app.layout =html.Div(style=page_style,
                         html.H3(children='Sélectionnez le parking dans lequel vous souhaitez vous garer.', style=styles),
                         html.Div(id='content'),
                         html.Div(id='menu-deroulant-parkings', style=input_style),
-                        html.Button("J'ai choisi mon parking", id='parking-button', style=button_style),
-                        html.Div(style={'flex': '1'}, children=[
-                        html.H2("Team vélo ou Team Tisséo ?", style=styles),
-                        dcc.Tabs(id="tabs", value='tab-1', children=[
-                             dcc.Tab(label='Team Vélo', value='tab-0'),
-                             dcc.Tab(label='Team Tisséo', value='tab-1'),
-                             ]),
-                             html.Div(id='tabs-content')
-])
-])
-
-
+                        dcc.Input(id='parking_choisi', placeholder='Entrez le nom du parking choisi', type='text'),
+                        html.Button("Je préfère le vélo", id='velo_button', style=button_style),
+                        html.Div(id='content_velo'),
+                        html.Button("Je préfère les transports en commun", id='tec_button', style=button_style),
+                        dcc.Graph(id='carte_velo', figure=carte_velo),
+                        dcc.Graph(id='carte_tec', figure=carte_tec)
+                        ])
 
 ###############################################  CALLBACKS ET FONCTIONS #####################################################
 
@@ -453,10 +249,10 @@ app.layout =html.Div(style=page_style,
 
 def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
     adresse_depart = f"{numero} {voie}, {code_postal} {ville}"
-    #df_5_parkings_proches_dash = df_parking_global.to_dict('records')
-    menu_deroulant_parkings = [{'label': parking, 'value': parking} for parking in df_parking_global['nom']]
+    #menu_deroulant_parkings = [{'label': parking, 'value': parking} for parking in df_parking_global['nom']]
 
     if n_clicks is not None:
+        geolocator = Nominatim(user_agent="my_app")
         location_reference = geolocator.geocode(adresse_depart)
     else:
         location_reference = None
@@ -479,9 +275,8 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
                 adresse = parking_data['adresse'].values[0]
                 lat = parking_data['ylat'].values[0]
                 lon = parking_data['xlong'].values[0]
-                # Affichage de la distance
+                
                 distance = distances[parking]
-                print("{:.0f} mètres".format(distance))
                 df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
                     'Parkings': [nom],
                     'Type de parking': [type_parking],
@@ -495,11 +290,10 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
             df_5_parkings_proches_dash = df_5_parkings_proches.drop(columns=['lon', 'lat'], axis=1).reset_index(drop=True).rename_axis('index').reset_index()
             df_5_parkings_proches_dash['index'] = df_5_parkings_proches_dash['index'] + 1        
             carte = go.Figure()
-            # Ajout des marqueurs pour les parkings
             for i in range(5):
                 lat_parking = df_5_parkings_proches['lat'][i]
                 lon_parking = df_5_parkings_proches['lon'][i]
-                nom_parking = f'PARKING_{i + 1}'
+                
 
                 carte.add_trace(go.Scattermapbox(
                     lat=[lat_parking],
@@ -514,7 +308,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
                     hoverinfo = ['text']    
             )
                 )
-
+            
             carte.update_layout(
                 mapbox_style='open-street-map',
                 mapbox_center_lon=df_5_parkings_proches['lon'][0],
@@ -535,36 +329,162 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
 
 
 @app.callback(
-    Output('tabs-content', 'children'),
-    [Input('tabs', 'value'),
-     Input('parking-button', 'n_clicks')]
+    [Output('content_velo', 'children'),
+    Output('carte_velo', 'figure'),       
+    ],
+    [Input('parking_choisi', 'value'),
+     Input('velo_button', 'n_clicks')]
 )
 
-def render_content(tab, n_clicks):
-    if tab == 'tab-0':
-        if df_station_velo_plus_proche is not None:
-            return html.Div(style={'justifyContent': 'center', 'alignItems': 'center'}, children=[
-        html.Div([html.Iframe(id='carte_itineraire', srcDoc=open('carte_itineraire.html', 'r').read(),style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'},
-                               width='450', height='450')]),
-        html.Div([html.Hr(style={'width': '100%', 'margin': '5px 0'})]),             
-        html.Div([dash_table.DataTable(id='df_station_velo_plus_proche', data=df_station_velo_plus_proche.to_dict('records'),
-                                   style_data={'color': '#ffc12b','backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
-                                   style_cell={'textAlign': 'center'})])]),
-        
-            
-    elif tab == 'tab-1':
-        """
-        if df_arrets_plus_proche is not None:
-            return html.Div(style={'justifyContent': 'center', 'alignItems': 'center'}, children=[
-        html.Div([html.Iframe(id='carte_tisseo', srcDoc=open('carte_tisseo.html', 'r').read(),style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center'},
-                               width='450', height='450')]),
-        html.Div([html.Hr(style={'width': '100%', 'margin': '5px 0'})]),             
-        html.Div([dash_table.DataTable(id='df_arrets_plus_proche', data=df_arrets_plus_proche.to_dict('records'),
-                                   style_data={'color': '#ffc12b','backgroundColor': '#a5282b', 'border': '1px solid #ffc12b'},
-                                   style_cell={'textAlign': 'center'})])]),
-        """
-    return html.Div()
+def render_content(parking_choisi='Capitole', n_clicks=1):
+    adresse_du_parking_choisi = df_parking_global[df_parking_global['nom'] == parking_choisi]['adresse'].values[0]
+    print(adresse_du_parking_choisi)
+    geolocator = Nominatim(user_agent="my_app")
+    location_reference = geolocator.geocode(adresse_du_parking_choisi)
 
+    if location_reference is not None:
+        coordinates_to_compare = df_parking_global['lat&lon']
+        coordinates_reference = (location_reference.latitude, location_reference.longitude)
+        distances = {}
+        for coordinate_to_compare in coordinates_to_compare:
+            distance = geodesic(coordinates_reference, coordinate_to_compare).meters
+            distances[coordinate_to_compare] = distance
+        closest_parkings = sorted(distances, key=distances.get)[:5]
+
+        if closest_parkings:
+            df_5_parkings_proches = pd.DataFrame(columns=['Parkings', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
+            for parking in closest_parkings:
+                parking_data = df_parking_global[df_parking_global['lat&lon'] == parking]
+                nom = parking_data['nom'].values[0]
+                type_parking = parking_data['type_ouvrage'].values[0]
+                gratuit = parking_data['gratuit'].values[0]
+                nb_places = parking_data['nb_voitures'].values[0]
+                adresse = parking_data['adresse'].values[0]
+                lat = parking_data['ylat'].values[0]
+                lon = parking_data['xlong'].values[0]
+                distance = distances[parking]
+                print("{:.0f} mètres".format(distance))
+                print(location_reference)
+                df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
+                    'Parkings': [nom],
+                    'Type de parking': [type_parking],
+                    'Gratuit': [gratuit],
+                    'Nb_places_totales': [nb_places],
+                    'Adresse': [adresse],
+                    'lat': [lat],
+                    'lon': [lon],
+                    'Distance(m)': [round(distance)]
+                })], ignore_index=True)
+                
+                df_5_parkings_proches_dash = df_5_parkings_proches.drop(columns=['lon', 'lat'], axis=1).reset_index(drop=True).rename_axis('index').reset_index()
+                df_5_parkings_proches_dash['index'] = df_5_parkings_proches_dash['index'] + 1
+                adresse_du_parking_choisi = df_5_parkings_proches['Adresse'][0]
+                address_reference = adresse_du_parking_choisi
+
+                coordinates_to_compare = df_velo_temps_reel['lat&lon']
+                geolocator = Nominatim(user_agent="my_app")
+                location_reference = geolocator.geocode(address_reference)
+                coordinates_reference = (location_reference.latitude, location_reference.longitude)
+                min_distance = float('inf')
+                closest_address = None
+
+                for coordinate_to_compare in coordinates_to_compare:
+                    distance = geodesic(coordinates_reference, coordinate_to_compare).meters
+
+                    if distance < min_distance:
+                        min_distance = distance
+                        closest_address = coordinate_to_compare
+
+                list_1 = []
+                list_2 = []
+                list_3 = []
+                list_4 = []
+                list_5 = []
+                Station_velo_la_plus_proche = df_velo_temps_reel['name'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+                list_1.append(Station_velo_la_plus_proche)
+                nb_velos_dispos = df_velo_temps_reel['num_bikes_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+                list_2.append(nb_velos_dispos)
+                nb_bornes_dispos = df_velo_temps_reel['num_docks_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+                list_3.append(nb_bornes_dispos)
+                adresse_de_la_station = df_velo_temps_reel['address'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
+                list_4.append(adresse_de_la_station)
+                list_5.append(min_distance)
+                df_station_velo_plus_proche = pd.concat([pd.Series(list_1), pd.Series(list_2), pd.Series(list_3), pd.Series(list_4),pd.Series(list_5)], axis=1)
+                df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns={0: 'Nom station', 1: 'Nombre de vélos disponibles', 2: 'Nombre de bornes disponibles', 3: 'Adresse', 4: 'Distance'})
+                df_station_velo_plus_proche['Distance'] = df_station_velo_plus_proche['Distance'].astype(int)
+                print(df_station_velo_plus_proche)
+
+                lat_parking = df_5_parkings_proches['lat'][0]
+                lon_parking = df_5_parkings_proches['lon'][0]
+
+                router = Router('foot')
+                depart_name = parking_choisi
+                arrivee_name = Station_velo_la_plus_proche
+                arrivee_row = df_velo_temps_reel[df_velo_temps_reel['name'] == arrivee_name].iloc[0]
+                depart_lat = lat_parking
+                depart_lon = lon_parking
+                arrivee_lat = arrivee_row['lat']
+                arrivee_lon = arrivee_row['lon']
+                depart = router.findNode(depart_lat, depart_lon)
+                arrivee = router.findNode(arrivee_lat, arrivee_lon)
+                status, itineraire = router.doRoute(depart, arrivee)
+                
+                if status == 'success':
+                    itineraire_coordonnees = [router.nodeLatLon(node) for node in itineraire]
+                    depart_trace = go.Scattermapbox(
+                        lat=[depart_lat],
+                        lon=[depart_lon],
+                        mode='markers',
+                        marker=dict(
+                            size=9,
+                            color='blue',
+                            symbol='circle'
+                        ),
+                        text=['Point de départ'],
+                        hoverinfo='text'
+                    )
+
+                    arrivee_trace = go.Scattermapbox(
+                        lat=[arrivee_lat],
+                        lon=[arrivee_lon],
+                        mode='markers',
+                        marker=dict(
+                            size=9,
+                            color='blue',
+                            symbol='circle'
+                        ),
+                        text=['Point d\'arrivée'],
+                        hoverinfo='text'
+                    )
+
+                    itineraire_trace = go.Scattermapbox(
+                        lat=[coord[0] for coord in itineraire_coordonnees],
+                        lon=[coord[1] for coord in itineraire_coordonnees],
+                        mode='lines',
+                        line=dict(
+                            color='blue',
+                            width=2
+                        )
+                    )
+
+                    carte_velo = go.Figure(data=[itineraire_trace, depart_trace, arrivee_trace])
+                    carte_velo.update_layout(
+                        mapbox=dict(
+                            center=dict(lat=depart_lat, lon=depart_lon),
+                            zoom=17,
+                            style='open-street-map'
+                        ),
+                        margin=dict(l=0, r=0, t=0, b=0)
+                    )
+                    return html.Div(children = [dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
+                                                style_cell={'textAlign': 'center'})]), carte_velo
+
+    else:
+        print("Impossible de trouver un itinéraire pour les points spécifiés.")
+
+    return 'parking non trouvé', carte_velo
+
+                  
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run(debug=True, use_reloader=False)
