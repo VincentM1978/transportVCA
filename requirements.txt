@@ -1,5 +1,4 @@
 datetime
-locale
 dash
 pandas
 requests
