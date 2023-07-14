@@ -441,7 +441,7 @@ def render_content( n_clicks, parking_choisi='Capitole'):
                                 size=20,
                                 color='#a5282b',
                                 symbol='circle'
-                            ),
+                            ),name='Départ',
                             text=['Point de départ'],
                             hoverinfo='text'
                         )
@@ -454,7 +454,7 @@ def render_content( n_clicks, parking_choisi='Capitole'):
                                 size=20,
                                 color='darkblue',
                                 symbol='circle'
-                            ),
+                            ),name = 'Arrivée',
                             text=['Point d\'arrivée'],
                             hoverinfo='text'
                         )
@@ -466,7 +466,7 @@ def render_content( n_clicks, parking_choisi='Capitole'):
                             line=dict(
                                 color='green',
                                 width=2
-                            )
+                            ),name = 'Itinéraire'
                         )
 
                         carte_velo = go.Figure(data=[itineraire_trace, depart_trace, arrivee_trace])
@@ -482,12 +482,12 @@ def render_content( n_clicks, parking_choisi='Capitole'):
                                                     style_cell={'textAlign': 'center'})]), carte_velo
 
         else:
-            print("Impossible de trouver un itinéraire pour les points spécifiés.")
+            n_clicks = 0
 
-        return html.Div(children = [html.H4("La station la plus proche est : \n")]), carte_velo
+        return html.Div(children = [html.H4("La station la plus proche est blabla: \n")]), carte_velo
 
     else:
-        html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
+        html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), starting_carte
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=False)
