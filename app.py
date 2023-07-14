@@ -18,7 +18,7 @@ import dash_bootstrap_components as dbc
 starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 carte_velo = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 carte_tec = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
-locale.setlocale(locale.LC_TIME, 'fr_FR')
+#locale.setlocale(locale.LC_TIME, 'fr_FR')
 
 ###################################################  PARKINGS #####################################################
 
