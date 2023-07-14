@@ -1,4 +1,5 @@
-import re
+from datetime import datetime
+import locale
 import dash
 from dash import dcc
 from dash import html
@@ -6,11 +7,10 @@ from dash import dash_table
 import pandas as pd
 import requests
 import plotly.express as px
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 import plotly.graph_objects as go
-from geopy import Point
 import pytz
 from pyroutelib3 import Router
 import dash_bootstrap_components as dbc
@@ -18,104 +18,53 @@ import dash_bootstrap_components as dbc
 starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 carte_velo = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 carte_tec = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
+locale.setlocale(locale.LC_TIME, 'fr_FR')
 
 ###################################################  PARKINGS #####################################################
 
-# Récupérer les données des parkings indigo et TM via un fichier csv
 link_csv_parking_indigo = "https://data.toulouse-metropole.fr/api/explore/v2.1/catalog/datasets/parcs-de-stationnement/exports/csv?lang=fr&timezone=Europe%2FBerlin&use_labels=true&delimiter=%3B"
 df_parking_indigo = pd.read_csv(link_csv_parking_indigo,sep=";")
-
-# Garder uniquement certaines colonnes
 colonne_a_garder = ['xlong', 'ylat', 'nom', 'nb_places', 'adresse', 'type_ouvrage', 'gestionnaire', 'gratuit', 'nb_voitures', 'nb_velo']
 df_parking_indigo_nettoye = df_parking_indigo.loc[:, colonne_a_garder]
-
-# Remplacer les données de la colonne gratuit
 df_parking_indigo_nettoye['gratuit'] = df_parking_indigo_nettoye['gratuit'].replace({'F': 'non', 'T': 'oui'})
-
-# Concaténer la latitude avec la longitude
 df_parking_indigo_nettoye['lat&lon'] = df_parking_indigo_nettoye.apply(lambda x: f"{x['ylat']}, {x['xlong']}", axis=1)
-
-# Rajout de la colonne "Relais ?"
 df_parking_indigo_nettoye['relais ?'] = 'non'
-
-
-# Récupérer les données des parkings relais via l'API de Toulouse Métropole
 link_parking_relais = "https://data.toulouse-metropole.fr/api/records/1.0/search/?dataset=parkings-relais&q=&facet=commune"
 response = requests.get(link_parking_relais)
 data = response.json()
 df_parking_relais = pd.DataFrame(data['records'])
-
-# Nous récupérons les données de la colonne 'fields'
 df_parking_relais_nettoye = pd.json_normalize(df_parking_relais['fields'])
 df_parking_relais_nettoye = df_parking_relais_nettoye[['nom', 'nb_places', 'xlong', 'ylat', 'adresse','type_ouvrage', 'gratuit', 'nb_voitures', 'nb_velo', 'geo_point_2d']]
-
-# Remplacer les valeurs de la colonne gratuit
 df_parking_relais_nettoye['gratuit'] = df_parking_relais_nettoye['gratuit'].replace('F', 'non').replace('T', 'oui')
-# Renommer la colonne geo_point_2d
 df_parking_relais_nettoye = df_parking_relais_nettoye.rename(columns={'geo_point_2d':'lat&lon'})
-# Passer la colonne lat&lon en string et retirer premier et dernier crochet de la colonne lat&lon
 df_parking_relais_nettoye['lat&lon'] = df_parking_relais_nettoye['lat&lon'].astype(str).apply(lambda x : x[1:]).apply(lambda x : x[:-1])
-
-# Ajout de la colonne "Relais"
 df_parking_relais_nettoye['relais ?'] = 'oui'
-
-# Rajouter une colonne qui précise le gestionnaire des parkings relais
 df_parking_relais_nettoye['gestionnaire'] = 'Tisseo'
-
-# Concaténer les deux dataframes
 df_parking_global = pd.concat([df_parking_relais_nettoye, df_parking_indigo_nettoye], ignore_index=True)
 print(df_parking_global)
 menu_deroulant_parkings = df_parking_global['nom'].tolist()
 
 ################################################################ VÉLOS ##############################################################
-
-# IMPORTER LES DONNEES DE L'API VELOS DE TOULOUSE ET LES STOCKER DANS UN DF
-
 lien_information = "https://transport.data.gouv.fr/gbfs/toulouse/station_information.json"
 lien_status = "https://transport.data.gouv.fr/gbfs/toulouse/station_status.json"
-
-# Charger le fichier JSON en tant que DataFrame
 df_info = pd.read_json(lien_information)
 df_statut = pd.read_json(lien_status)
-
-# Affichage de l'ensemble des données de la colonne Data pour récupérer les stations
 stations_list = df_info['data'][0]
-
-# Convertir la liste de dictionnaires en DataFrame
 df_stations = pd.DataFrame(stations_list)
-
-# Affichage de l'ensemble des données de la colonne Data pour récupérer les disponibilités
 statut_list = df_statut['data'][0]
-
-# Convertir la liste de dictionnaires en DataFrame
 df_disponibilites = pd.DataFrame(statut_list)
-
-# Convertir la colonne last_reported en objets datetime au fuseau horaire UTC
 df_disponibilites['last_reported'] = pd.to_datetime(df_disponibilites['last_reported'], unit='s').dt.tz_localize('UTC')
-
-# Convertir la colonne last_reported en heure locale Paris
 paris_tz = pytz.timezone('Europe/Paris')
 df_disponibilites['last_reported'] = df_disponibilites['last_reported'].dt.tz_convert(paris_tz)
-
-# Formater la colonne last_reported en une chaîne de caractères sans indication de fuseau horaire
 df_disponibilites['last_reported'] = df_disponibilites['last_reported'].dt.strftime('%d/%m/%Y %H:%M:%S')
-
-# Merge des deux DF stations et disponibilités
 df_velo_temps_reel = pd.merge(df_stations,
         df_disponibilites,
         how="left",
         left_on='station_id',
         right_on='station_id')
-
-# Supprimer le code station de la colonne 'name' => démarrer au 8ème caractère
 df_velo_temps_reel['name'] = df_velo_temps_reel['name'].apply(lambda x : x[8:])
-
-# Créer une colonne adresse complete pour avoir l'adresse et le nom de la ville (utile pour la suite)
 df_velo_temps_reel['adresse_complete'] = df_velo_temps_reel['address']+", , Toulouse"
-
-# concatener la latitude avec la longitude
 df_velo_temps_reel['lat&lon'] = df_velo_temps_reel.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
-
 
 ##################################################### CRÉATION DU DF DES 5 STATIONS LES PLUS PROCHES #####################################################
 
@@ -131,35 +80,23 @@ data = response.json()
 df_stop_areas_coordonnees = pd.DataFrame(data)
 df_stop_areas_list_coordonnees = df_stop_areas_coordonnees['stopAreas'].values[0]
 df_arrets_coordonnees = pd.DataFrame(df_stop_areas_list_coordonnees)
-
-# Suppression des dix premiers caractères de la colonne "id"
 df_arrets_coordonnees['id'] = df_arrets_coordonnees['id'].apply(lambda x : x[10:])
-# renommage des colonnes du df
 df_arrets_coordonnees=df_arrets_coordonnees.rename(columns={"id": "id_stop_area"})
 df_arrets_coordonnees=df_arrets_coordonnees.rename(columns={"x": "lon"})
 df_arrets_coordonnees=df_arrets_coordonnees.rename(columns={"y": "lat"})
-
 df_arrets_coordonnees['index_arrets'] = df_arrets_coordonnees.index
 df_line = df_arrets_coordonnees.explode('line')
 df_line = pd.concat([df_line.drop('line', axis=1), df_line['line'].apply(pd.Series)], axis=1)
 df_line['index_arrets'] = df_arrets_coordonnees['index_arrets']
 df_line_propre = df_line.drop(columns = ['index_arrets','bgXmlColor', 'color', 'fgXmlColor', 'network', 'reservationMandatory', 'id' ])
 df_line_propre['transportmode'] = df_line_propre['transportMode'].apply(lambda x: x['name'])
-
 df_line_final = df_line_propre.drop(columns = ['transportMode'])
 df_line_final = df_line_final.reset_index(drop=True)
 df_line_final.columns = ['arret' if name == 'name' and index == 2 else name for index, name in enumerate(df_line_final.columns)]
 df_line_final.rename(columns = {"name":"line"}, inplace=True)
-
-# concatener la latitude avec la longitude
 df_line_final['lat&lon'] = df_line_final.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
-
-# Supprimer les lignes en doublons pour avoir une ligne par arrêt : garder les colonnes arrêts, id_stop_area, lat&lon
 df_stop_area_unique = df_line_final.drop_duplicates(subset = "id_stop_area")
-
-# Garder uniquement les colonnes souhaitées
 df_stop_area_unique = df_stop_area_unique[['cityName', 'id_stop_area', 'arret',  'lat&lon' ]]
-
 
 ############################################### Création de l'application Dash ###############################################
 app = dash.Dash(__name__, prevent_initial_callbacks='initial_duplicate', suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.JOURNAL])
@@ -173,10 +110,10 @@ styles = {
 
 page_style = {
         'width': '100%',
-        'height': '100%',  # 'vh' signifie viewport height (hauteur de la fenêtre du navigateur)
-        'display': 'flex',  # Utiliser flexbox pour aligner et centrer le contenu
-        'flexDirection': 'column',  # Aligner le contenu en colonne
-        'alignItems': 'center',  # Centrer horizontalement le contenu
+        'height': '100%',  
+        'display': 'flex',  
+        'flexDirection': 'column',
+        'alignItems': 'center'
     }
 
 line_style = {
@@ -227,8 +164,8 @@ app.layout =html.Div(style=page_style,
                         dcc.Input(id='parking_choisi', placeholder='Entrez le nom du parking choisi', type='text'),
                         html.Button("Je préfère le vélo", id='velo_button', style=button_style),
                         html.Div(id='content_velo'),
-                        html.Button("Je préfère les transports en commun", id='tec_button', style=button_style),
                         dcc.Graph(id='carte_velo', figure=carte_velo),
+                        html.Button("Je préfère les transports en commun", id='tec_button', style=button_style),
                         dcc.Graph(id='carte_tec', figure=carte_tec)
                         ])
 
@@ -336,7 +273,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
      ]
 )
 
-def render_content( n_clicks, parking_choisi='Capitole'):
+def render_content( n_clicks, parking_choisi):
     if n_clicks is not None:
             
         adresse_du_parking_choisi = df_parking_global[df_parking_global['nom'] == parking_choisi]['adresse'].values[0]
@@ -412,8 +349,8 @@ def render_content( n_clicks, parking_choisi='Capitole'):
                     list_4.append(adresse_de_la_station)
                     list_5.append(min_distance)
                     df_station_velo_plus_proche = pd.concat([pd.Series(list_1), pd.Series(list_2), pd.Series(list_3), pd.Series(list_4),pd.Series(list_5)], axis=1)
-                    df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns={0: 'Nom station', 1: 'Nombre de vélos disponibles', 2: 'Nombre de bornes disponibles', 3: 'Adresse', 4: 'Distance'})
-                    df_station_velo_plus_proche['Distance'] = df_station_velo_plus_proche['Distance'].astype(int)
+                    df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns={0: 'Nom station', 1: 'Nombre de vélos disponibles', 2: 'Nombre de bornes disponibles', 3: 'Adresse', 4: 'Distance (m)'})
+                    df_station_velo_plus_proche['Distance (m)'] = df_station_velo_plus_proche['Distance (m)'].astype(int)
                     print(df_station_velo_plus_proche)
 
                     lat_parking = df_5_parkings_proches['lat'][0]
@@ -478,7 +415,8 @@ def render_content( n_clicks, parking_choisi='Capitole'):
                             ),
                             margin=dict(l=0, r=0, t=0, b=0)
                         )
-                        return html.Div(children = [html.H4("La station la plus proche est : \n"),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
+                        now = datetime.now()
+                        return html.Div(children = [html.H4(f"Nous sommes le {now.strftime('%A %d %B, il est %H:%M')}, la station la plus proche est : \n"),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
                                                     style_cell={'textAlign': 'center'})]), carte_velo
 
         else:
