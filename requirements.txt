@@ -1,11 +1,12 @@
+datetime
+locale
 dash
-plotly
 pandas
 requests
 pytz
-gunicorn
+plotly
 geopy
-folium
 pytz
 pyroutelib3
 dash_bootstrap_components
+gunicorn
