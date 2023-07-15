@@ -417,7 +417,9 @@ def render_content( n_clicks, parking_choisi):
                         )
                         now = datetime.now()
                         # Obtenir la date et l'heure formatées en français
-                        formatted_date = format_datetime(now, format='full', locale='fr_FR')
+                        formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
+                        formatted_date = formatted_date.replace("\955", "h")
+                        print(formatted_date)
 
                         return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n"),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
                                                     style_cell={'textAlign': 'center'})]), carte_velo
@@ -425,10 +427,13 @@ def render_content( n_clicks, parking_choisi):
         else:
             n_clicks = 0
 
-        return html.Div(children = [html.H4("La station la plus proche est blabla: \n")]), carte_velo
+        return html.Div(children = [html.H4("La station la plus proche est : \n")]), carte_velo
 
     else:
         html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), starting_carte
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=False)
