@@ -1,5 +1,5 @@
 from datetime import datetime
-import locale
+from babel.dates import format_datetime, format_date, format_time
 import dash
 from dash import dcc
 from dash import html
@@ -18,7 +18,7 @@ import dash_bootstrap_components as dbc
 starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 carte_velo = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
 carte_tec = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
-#locale.setlocale(locale.LC_TIME, 'fr_FR')
+
 
 ###################################################  PARKINGS #####################################################
 
@@ -416,7 +416,10 @@ def render_content( n_clicks, parking_choisi):
                             margin=dict(l=0, r=0, t=0, b=0)
                         )
                         now = datetime.now()
-                        return html.Div(children = [html.H4(f"Nous sommes le {now.strftime('%A %d %B, il est %H:%M')}, la station la plus proche est : \n"),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
+                        # Obtenir la date et l'heure formatées en français
+                        formatted_date = format_datetime(now, format='full', locale='fr_FR')
+
+                        return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n"),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
                                                     style_cell={'textAlign': 'center'})]), carte_velo
 
         else:
