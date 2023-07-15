@@ -1,4 +1,5 @@
 datetime
+babel
 dash
 pandas
 requests
