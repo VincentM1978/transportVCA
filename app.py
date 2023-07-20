@@ -15,9 +15,9 @@ import pytz
 from pyroutelib3 import Router
 import dash_bootstrap_components as dbc
 
-starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
-carte_velo = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
-carte_tec = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=450, mapbox_style='open-street-map')
+starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=15, height=900, width=900, mapbox_style='open-street-map')
+carte_velo = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=900, width=900, mapbox_style='open-street-map')
+carte_tec = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=900, width=900, mapbox_style='open-street-map')
 
 
 ###################################################  PARKINGS #####################################################
@@ -41,7 +41,6 @@ df_parking_relais_nettoye['lat&lon'] = df_parking_relais_nettoye['lat&lon'].asty
 df_parking_relais_nettoye['relais ?'] = 'oui'
 df_parking_relais_nettoye['gestionnaire'] = 'Tisseo'
 df_parking_global = pd.concat([df_parking_relais_nettoye, df_parking_indigo_nettoye], ignore_index=True)
-print(df_parking_global)
 menu_deroulant_parkings = df_parking_global['nom'].tolist()
 
 ################################################################ VÉLOS ##############################################################
@@ -99,7 +98,7 @@ df_stop_area_unique = df_line_final.drop_duplicates(subset = "id_stop_area")
 df_stop_area_unique = df_stop_area_unique[['cityName', 'id_stop_area', 'arret',  'lat&lon' ]]
 
 ############################################### Création de l'application Dash ###############################################
-app = dash.Dash(__name__, prevent_initial_callbacks='initial_duplicate', suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.JOURNAL])
+app = dash.Dash(__name__, prevent_initial_callbacks='initial_duplicate', suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
 server = app.server
 
 ######################################### Styles CSS personnalisés #########################################
@@ -161,7 +160,6 @@ app.layout =html.Div(style=page_style,
                         html.H3(children='Sélectionnez le parking dans lequel vous souhaitez vous garer.', style=styles),
                         html.Div(id='content'),
                         html.Div(id='menu-deroulant-parkings', style=input_style),
-                        dcc.Input(id='parking_choisi', placeholder='Entrez le nom du parking choisi', type='text'),
                         html.Button("Je préfère le vélo", id='velo_button', style=button_style),
                         html.Div(id='content_velo'),
                         dcc.Graph(id='carte_velo', figure=carte_velo),
@@ -269,7 +267,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
     Output('carte_velo', 'figure'),       
     ],
     [Input('velo_button', 'n_clicks'),
-     Input('parking_choisi', 'value')
+     Input('menu-deroulant-parkings', 'value')
      ]
 )
 
@@ -421,8 +419,8 @@ def render_content( n_clicks, parking_choisi):
                         formatted_date = formatted_date.replace("\955", "h")
                         print(formatted_date)
 
-                        return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n"),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
-                                                    style_cell={'textAlign': 'center'})]), carte_velo
+                        return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),html.Br(),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
+                                                    style_cell={'textAlign': 'center'}),html.Br()]), carte_velo
 
         else:
             n_clicks = 0
@@ -436,4 +434,4 @@ def render_content( n_clicks, parking_choisi):
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
