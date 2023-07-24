@@ -96,11 +96,12 @@ df_line_final.rename(columns = {"name":"line"}, inplace=True)
 df_line_final['lat&lon'] = df_line_final.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
 df_stop_area_unique = df_line_final.drop_duplicates(subset = "id_stop_area")
 df_stop_area_unique = df_stop_area_unique[['cityName', 'id_stop_area', 'arret',  'lat&lon' ]]
+print(df_stop_area_unique)
+print(len(df_stop_area_unique))
 
 ############################################### Création de l'application Dash ###############################################
 app = dash.Dash(__name__, prevent_initial_callbacks='initial_duplicate', suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
 app.title = 'Transports Toulouse VCA'
-#app._favicon = "/favicon.ico"
 server = app.server
 
 ######################################### Styles CSS personnalisés #########################################
@@ -175,6 +176,7 @@ app.layout = html.Div(style=page_style, children=[
         ]),
         html.Div(style={'flex': '1', 'margin-left': '10px'}, children=[
             html.Button("Je préfère les transports en commun", id='tec_button', style=button_style),
+            html.Div(id='menu-deroulant-arrets', style=input_style),
             html.Div(id='content_tec'),
             dcc.Graph(id='carte_tec', figure=carte_tec)
         ])
@@ -457,7 +459,7 @@ def render_content( n_clicks, parking_choisi):
      ]
 )
 
-def render_content2( n_clicks, parking_choisi):
+def render_content2(n_clicks, parking_choisi):
     if n_clicks is not None:
             
         adresse_du_parking_choisi = df_parking_global[df_parking_global['nom'] == parking_choisi]['adresse'].values[0]
@@ -466,155 +468,70 @@ def render_content2( n_clicks, parking_choisi):
         location_reference = geolocator.geocode(adresse_du_parking_choisi)
 
         if location_reference is not None:
-            coordinates_to_compare = df_parking_global['lat&lon']
+            coordinates_to_compare = df_stop_area_unique['lat&lon']
             coordinates_reference = (location_reference.latitude, location_reference.longitude)
             distances = {}
             for coordinate_to_compare in coordinates_to_compare:
                 distance = geodesic(coordinates_reference, coordinate_to_compare).meters
                 distances[coordinate_to_compare] = distance
-            closest_parkings = sorted(distances, key=distances.get)[:5]
+            closest_stations = sorted(distances, key=distances.get)[:5]
 
-            if closest_parkings:
-                df_5_parkings_proches = pd.DataFrame(columns=['Parkings', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
-                for parking in closest_parkings:
-                    parking_data = df_parking_global[df_parking_global['lat&lon'] == parking]
-                    nom = parking_data['nom'].values[0]
-                    type_parking = parking_data['type_ouvrage'].values[0]
-                    gratuit = parking_data['gratuit'].values[0]
-                    nb_places = parking_data['nb_voitures'].values[0]
-                    adresse = parking_data['adresse'].values[0]
-                    lat = parking_data['ylat'].values[0]
-                    lon = parking_data['xlong'].values[0]
-                    distance = distances[parking]
-                    print("{:.0f} mètres".format(distance))
-                    print(location_reference)
-                    df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
-                        'Parkings': [nom],
-                        'Type de parking': [type_parking],
-                        'Gratuit': [gratuit],
-                        'Nb_places_totales': [nb_places],
-                        'Adresse': [adresse],
-                        'lat': [lat],
-                        'lon': [lon],
-                        'Distance(m)': [round(distance)]
-                    })], ignore_index=True)
-                    
-                    df_5_parkings_proches_dash = df_5_parkings_proches.drop(columns=['lon', 'lat'], axis=1).reset_index(drop=True).rename_axis('index').reset_index()
-                    df_5_parkings_proches_dash['index'] = df_5_parkings_proches_dash['index'] + 1
-                    adresse_du_parking_choisi = df_5_parkings_proches['Adresse'][0]
-                    address_reference = adresse_du_parking_choisi
+            if closest_stations:
+                closest_stops = df_stop_area_unique[df_stop_area_unique['lat&lon'].isin(closest_stations)]['arret'].tolist()
+                closest_stops_id = df_stop_area_unique[df_stop_area_unique['lat&lon'].isin(closest_stations)]['id_stop_area'].tolist()
+                LatLon_closest_stops = df_stop_area_unique[df_stop_area_unique['lat&lon'].isin(closest_stations)]['lat&lon'].tolist()
+                list_distances = []
+                for station in closest_stations:
+                    distance = distances[station]
+                    list_distances.append(distances[station])
+                df_arrets_plus_proches = pd.concat([pd.Series(closest_stops), pd.Series(closest_stops_id), pd.Series(LatLon_closest_stops), pd.Series(list_distances)], axis=1)
+                df_arrets_plus_proches = df_arrets_plus_proches.rename(columns={0: 'Arrets', 1: 'id_stop_area', 2: 'lat&lon', 3: 'Distance (m)'})
+                df_arrets_plus_proches['Distance (m)'] = df_arrets_plus_proches['Distance (m)'].astype(int)
+                df_arrets_plus_proches[['lat','lon']] = df_arrets_plus_proches['lat&lon'].str.split(",",expand=True).astype(float)
+                print(df_arrets_plus_proches)
+                carte_tec = go.Figure()
+                for i in range(5):
+                    coordonnees_lat_arrets_tisseo = df_arrets_plus_proches['lat'][i]
+                    coordonnees_lon_arrets_tisseo = df_arrets_plus_proches['lon'][i]
+                    nom_arret_tisseo = f'ARRET_{i + 1}'
+                    carte_tec.add_trace(go.Scattermapbox(
+                        lat=[coordonnees_lat_arrets_tisseo],
+                        lon=[coordonnees_lon_arrets_tisseo],
+                        mode='markers',
+                        marker=go.scattermapbox.Marker(
+                            size=20,
+                            color='#a5282b',
+                            opacity=1),
+                        name=df_arrets_plus_proches['Arrets'][i],
+                        text = [f" <b>Nom de l'arrêt:</b> {df_arrets_plus_proches['Arrets'][i]} <b>Distance:</b> {df_arrets_plus_proches['Distance (m)'].astype(str)[i]} Metres"],
+                        hoverinfo = ['text']))
+                
+                carte_tec.update_layout(
+                    mapbox_style='open-street-map',
+                    mapbox_center_lon=df_arrets_plus_proches['lon'][0],
+                    mapbox_center_lat=df_arrets_plus_proches['lat'][0],
+                    mapbox=dict(
+                        zoom=15
+                    )
+                )
+                        
+                now = datetime.now()
+                formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
+                formatted_date = formatted_date.replace("\955", "h")
 
-                    coordinates_to_compare = df_velo_temps_reel['lat&lon']
-                    geolocator = Nominatim(user_agent="my_app")
-                    location_reference = geolocator.geocode(address_reference)
-                    coordinates_reference = (location_reference.latitude, location_reference.longitude)
-                    min_distance = float('inf')
-                    closest_address = None
+                
 
-                    for coordinate_to_compare in coordinates_to_compare:
-                        distance = geodesic(coordinates_reference, coordinate_to_compare).meters
-
-                        if distance < min_distance:
-                            min_distance = distance
-                            closest_address = coordinate_to_compare
-
-                    list_1 = []
-                    list_2 = []
-                    list_3 = []
-                    list_4 = []
-                    list_5 = []
-                    Station_velo_la_plus_proche = df_velo_temps_reel['name'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-                    list_1.append(Station_velo_la_plus_proche)
-                    nb_velos_dispos = df_velo_temps_reel['num_bikes_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-                    list_2.append(nb_velos_dispos)
-                    nb_bornes_dispos = df_velo_temps_reel['num_docks_available'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-                    list_3.append(nb_bornes_dispos)
-                    adresse_de_la_station = df_velo_temps_reel['address'][df_velo_temps_reel['lat&lon'] == (closest_address)].item()
-                    list_4.append(adresse_de_la_station)
-                    list_5.append(min_distance)
-                    df_station_velo_plus_proche = pd.concat([pd.Series(list_1), pd.Series(list_2), pd.Series(list_3), pd.Series(list_4),pd.Series(list_5)], axis=1)
-                    df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns={0: 'Station', 1: 'Vélos disponibles', 2: 'Bornes disponibles', 3: 'Adresse', 4: 'Distance (m)'})
-                    df_station_velo_plus_proche['Distance (m)'] = df_station_velo_plus_proche['Distance (m)'].astype(int)
-                    print(df_station_velo_plus_proche)
-
-                    lat_parking = df_5_parkings_proches['lat'][0]
-                    lon_parking = df_5_parkings_proches['lon'][0]
-
-                    router = Router('foot')
-                    depart_name = parking_choisi
-                    arrivee_name = Station_velo_la_plus_proche
-                    arrivee_row = df_velo_temps_reel[df_velo_temps_reel['name'] == arrivee_name].iloc[0]
-                    depart_lat = lat_parking
-                    depart_lon = lon_parking
-                    arrivee_lat = arrivee_row['lat']
-                    arrivee_lon = arrivee_row['lon']
-                    depart = router.findNode(depart_lat, depart_lon)
-                    arrivee = router.findNode(arrivee_lat, arrivee_lon)
-                    status, itineraire = router.doRoute(depart, arrivee)
-                    
-                    if status == 'success':
-                        itineraire_coordonnees = [router.nodeLatLon(node) for node in itineraire]
-                        depart_trace = go.Scattermapbox(
-                            lat=[depart_lat],
-                            lon=[depart_lon],
-                            mode='markers',
-                            marker=dict(
-                                size=20,
-                                color='#a5282b',
-                                symbol='circle'
-                            ),name='Départ',
-                            text=['Point de départ'],
-                            hoverinfo='text'
-                        )
-
-                        arrivee_trace = go.Scattermapbox(
-                            lat=[arrivee_lat],
-                            lon=[arrivee_lon],
-                            mode='markers',
-                            marker=dict(
-                                size=20,
-                                color='darkblue',
-                                symbol='circle'
-                            ),name = 'Arrivée',
-                            text=['Point d\'arrivée'],
-                            hoverinfo='text'
-                        )
-
-                        itineraire_trace = go.Scattermapbox(
-                            lat=[coord[0] for coord in itineraire_coordonnees],
-                            lon=[coord[1] for coord in itineraire_coordonnees],
-                            mode='lines',
-                            line=dict(
-                                color='green',
-                                width=2
-                            ),name = 'Itinéraire'
-                        )
-
-                        carte_tec = go.Figure(data=[itineraire_trace, depart_trace, arrivee_trace])
-                        carte_tec.update_layout(
-                            mapbox=dict(
-                                center=dict(lat=depart_lat, lon=depart_lon),
-                                zoom=17,
-                                style='open-street-map'
-                            ),
-                            margin=dict(l=0, r=0, t=0, b=0)
-                        )
-                        now = datetime.now()
-                        # Obtenir la date et l'heure formatées en français
-                        formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
-                        formatted_date = formatted_date.replace("\955", "h")
-                        print(formatted_date)
-
-                        return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),html.Br(),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
+                return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),html.Br(),html.Br(),
+                                            dash_table.DataTable(id='df_arrets_plus_proches' ,data = df_arrets_plus_proches.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
                                                     style_cell={'textAlign': 'center'}),html.Br()]), carte_tec
-
+            else:
+                print("Aucune station trouvée")
+        
         else:
-            n_clicks = 0
-
-        return html.Div(children = [html.H4("La station la plus proche est : \n")]), carte_tec
+            return html.Div(children = [html.H4(f"Adresse non trouvée ")]), starting_carte
 
     else:
-        html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), starting_carte
+        return html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), starting_carte
 
 
 
