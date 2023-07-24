@@ -1,5 +1,5 @@
 from datetime import datetime
-from babel.dates import format_datetime
+from babel.dates import format_datetime, format_date, format_time
 import dash
 from dash import dcc
 from dash import html
@@ -162,8 +162,8 @@ app.layout = html.Div(style=page_style, children=[
     html.H3(children='Sélectionnez le parking dans lequel vous souhaitez vous garer.', style=styles),
     html.Div(id='content'),
     html.Div(id='menu-deroulant-parkings', style=input_style),
-
     html.Hr(style=line_style),
+    html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]),
     html.Div(style={'display': 'flex', 'justify-content':'space-around'}, children=[
         html.Div(style={'flex': '1', 'margin-left': '100px'}, children=[
             html.Div(style={'display': 'flex'}, children=[
@@ -447,7 +447,7 @@ def render_content( n_clicks, parking_choisi):
         return html.Div(children = [html.H4("La station la plus proche est : \n")]), starting_carte
 
     else:
-        html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), starting_carte
+        html.Div(children = [html.H4(" ")]), starting_carte
 
 
 
@@ -550,7 +550,7 @@ def render_content2(n_clicks, parking_choisi):
             return html.Div(children = [html.H4(f"Adresse non trouvée ")]), starting_carte
 
     else:
-        return html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), starting_carte
+        return html.Div(children = [html.H4("")]), starting_carte
 
 
 
