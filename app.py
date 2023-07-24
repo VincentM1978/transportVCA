@@ -1,5 +1,5 @@
 from datetime import datetime
-from babel.dates import format_datetime, format_date, format_time
+from babel.dates import format_datetime
 import dash
 from dash import dcc
 from dash import html
@@ -444,7 +444,7 @@ def render_content( n_clicks, parking_choisi):
         else:
             n_clicks = 0
 
-        return html.Div(children = [html.H4("La station la plus proche est : \n")]), carte_velo
+        return html.Div(children = [html.H4("La station la plus proche est : \n")]), starting_carte
 
     else:
         html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]), starting_carte
@@ -597,13 +597,13 @@ def render_content3(n_clicks, nom_arret_choisi):
 
             df_horaires_utilisateur = df_horaires_utilisateur.reindex(columns=['Prochains horaires', 'Numéro de ligne', 'Nom de la ligne', 'Ville de destination' ])
             print("Le prochain train est :", df_horaires_utilisateur)
-            return html.Div(children= [dash_table.DataTable(id='df_horaires_utilisateur',data = df_horaires_utilisateur.to_dict('records'),style_data={'border': '1px solid #ffc12b'},style_cell={'textAlign': 'center'})])
+            return [html.Div([dash_table.DataTable(id='df_horaires_utilisateur',data = df_horaires_utilisateur.to_dict('records'),style_data={'border': '1px solid #ffc12b'},style_cell={'textAlign': 'center'})])]
         
         else:
-            return html.Div(children = [html.H4(f"Choisissez un arrêt")])
+            return dbc.Label((f"Choisissez un arrêt"))
 
     else:
-        return html.Div(children = [html.H4(f"Choisissez un arrêt")])
+        return [dbc.Label((f"Cliquez sur le bouton"))]
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
