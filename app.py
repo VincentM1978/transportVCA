@@ -178,7 +178,9 @@ app.layout = html.Div(style=page_style, children=[
             html.Button("Je préfère les transports en commun", id='tec_button', style=button_style),
             html.Div(id='menu-deroulant-arrets', style=input_style),
             html.Div(id='content_tec'),
-            dcc.Graph(id='carte_tec', figure=carte_tec)
+            dcc.Graph(id='carte_tec', figure=carte_tec),
+            html.Button("J'ai choisi mon arrêt.", id='arret-button', style=button_style),
+            html.Div(id='content_horaires')
         ])
     ])
 ])
@@ -434,10 +436,10 @@ def render_content( n_clicks, parking_choisi):
                         # Obtenir la date et l'heure formatées en français
                         formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
                         formatted_date = formatted_date.replace("\955", "h")
-                        print(formatted_date)
-
-                        return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),html.Br(),dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
-                                                    style_cell={'textAlign': 'center'}),html.Br()]), carte_velo
+                        return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
+                                                    html.Br(),
+                                                    dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},style_cell={'textAlign': 'center'}),
+                                                    html.Br()]),carte_velo
 
         else:
             n_clicks = 0
@@ -521,12 +523,29 @@ def render_content2(n_clicks, parking_choisi):
 
                 
 
-                return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),html.Br(),html.Br(),
-                                            dash_table.DataTable(id='df_arrets_plus_proches' ,data = df_arrets_plus_proches.to_dict('records'), style_data={'border': '1px solid #ffc12b'},
-                                                    style_cell={'textAlign': 'center'}),html.Br()]), carte_tec
+                return html.Div(children=[
+    html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
+    html.Br(),
+    html.Br(),
+    dash_table.DataTable(
+        id='df_arrets_plus_proches',
+        data=df_arrets_plus_proches[['Arrets', 'Distance (m)']].to_dict('records'),
+        style_data={'border': '1px solid #ffc12b'},
+        style_cell={'textAlign': 'center'}
+    ),
+    html.Br(),
+    dcc.Dropdown(
+        id='menu-deroulant-arrets',
+        options=[{'label': arret, 'value': arret} for arret in df_arrets_plus_proches['Arrets']]
+    )
+]), carte_tec
+
             else:
                 print("Aucune station trouvée")
         
+
+
+
         else:
             return html.Div(children = [html.H4(f"Adresse non trouvée ")]), starting_carte
 
@@ -535,6 +554,56 @@ def render_content2(n_clicks, parking_choisi):
 
 
 
+@app.callback(
+    [Output('content_horaires', 'children'),       
+    ],
+    [Input('arret-button', 'n_clicks'),
+     Input('menu-deroulant-arrets', 'value')
+     ]
+)
+
+def render_content3(n_clicks, nom_arret_choisi):
+    if n_clicks is not None:
+
+        if nom_arret_choisi is not None:
+                            
+            df_lignes_arrets_choisies = df_line_final[df_line_final['arret'] == nom_arret_choisi]
+            id_stop_area_selectionne = df_lignes_arrets_choisies['id_stop_area'].iloc[0]
+            service_name = 'stops_schedules'
+            format_type = 'xml'
+            parameters_stop_area = 'stopAreaId=stop_area:'+id_stop_area_selectionne
+            api_key = '15cbfcdf-76bb-4136-980a-6dc1f1d96cd5'
+            url_stop_area_id = f"https://api.tisseo.fr/v2/{service_name}.json?{parameters_stop_area}&key={api_key}"
+            response = requests.get(url_stop_area_id)
+            data = response.json()
+            df_schedules_stop_area = pd.json_normalize(data['departures'], record_path= "departure", meta= 'stopArea')
+            df_schedules_stop_area = df_schedules_stop_area[['dateTime', 'destination', 'line.name', 'line.network', 'line.shortName', 'stopArea']]
+            df_schedules_stop_area = pd.concat([df_schedules_stop_area.drop(['stopArea'], axis=1), df_schedules_stop_area['stopArea'].apply(pd.Series)], axis=1)
+            df_schedules_stop_area = df_schedules_stop_area.drop(['cityId'], axis=1)
+            df_schedules_stop_area = df_schedules_stop_area.explode('destination')
+            df_destination = df_schedules_stop_area['destination'].apply(pd.Series)
+            df_destination = df_destination.rename(columns={"id": "id_stop_area_destination", "name": "name_stop_area_destination", "cityName": "cityName_destination"})
+            df_concat = pd.concat([df_schedules_stop_area, df_destination], axis=1)
+            df_concat = df_concat.drop(['destination', 'line.network', 'id_stop_area_destination', 'name_stop_area_destination'], axis=1)
+            df_concat = df_concat.rename(columns={"id": "id_stop_area"})
+            df_concat['id_stop_area'] = df_concat['id_stop_area'].apply(lambda x : x[10:])
+            df_horaires_utilisateur = df_concat.drop(columns=['name', 'cityName', 'id_stop_area'], axis = 1)
+            df_horaires_utilisateur = df_horaires_utilisateur.rename(columns={
+                'dateTime': 'Prochains horaires',
+                'line.name': 'Nom de la ligne',
+                'line.shortName': 'Numéro de ligne',
+                'cityName_destination': 'Ville de destination'
+            })
+
+            df_horaires_utilisateur = df_horaires_utilisateur.reindex(columns=['Prochains horaires', 'Numéro de ligne', 'Nom de la ligne', 'Ville de destination' ])
+            print("Le prochain train est :", df_horaires_utilisateur)
+            return html.Div(children= [dash_table.DataTable(id='df_horaires_utilisateur',data = df_horaires_utilisateur.to_dict('records'),style_data={'border': '1px solid #ffc12b'},style_cell={'textAlign': 'center'})])
+        
+        else:
+            return html.Div(children = [html.H4(f"Choisissez un arrêt")])
+
+    else:
+        return html.Div(children = [html.H4(f"Choisissez un arrêt")])
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
