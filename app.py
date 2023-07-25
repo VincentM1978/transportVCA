@@ -274,7 +274,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
                                                 style_data={'border': '1px solid #ffc12b'},
                                                 style_cell={'textAlign': 'center'})]),dcc.Dropdown(id='menu-deroulant-parkings', options=[{'label': parking, 'value': parking} for parking in df_5_parkings_proches['Parking']])
     else:
-        return "Adresse non trouvée", starting_carte, 'Tableau des 5 parkings les plus proches', 'Choisissez un parking dans le menu déroulant'
+        return "Adresse non trouvée", starting_carte, '', ''
     
     
 
@@ -593,7 +593,7 @@ def render_content3(n_clicks, nom_arret_choisi):
             return dbc.Label((f"Choisissez un arrêt"))
 
     else:
-        return [dbc.Label((f"Cliquez sur le bouton"))]
+        return [dbc.Label((f""))]
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
