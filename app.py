@@ -96,8 +96,6 @@ df_line_final.rename(columns = {"name":"line"}, inplace=True)
 df_line_final['lat&lon'] = df_line_final.apply(lambda x: f"{x['lat']}, {x['lon']}", axis=1)
 df_stop_area_unique = df_line_final.drop_duplicates(subset = "id_stop_area")
 df_stop_area_unique = df_stop_area_unique[['cityName', 'id_stop_area', 'arret',  'lat&lon' ]]
-print(df_stop_area_unique)
-print(len(df_stop_area_unique))
 
 ############################################### Création de l'application Dash ###############################################
 app = dash.Dash(__name__, prevent_initial_callbacks='initial_duplicate', suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
@@ -158,27 +156,27 @@ app.layout = html.Div(style=page_style, children=[
     dcc.Input(id="adresse-depart", type="text", disabled=True),
     html.Button('Rechercher', id='submit-button', style=button_style),
     dcc.Graph(id='carte_parkings', figure=starting_carte),
+    html.Div(id='content'),
     html.Hr(style=line_style),
     html.H3(children='Sélectionnez le parking dans lequel vous souhaitez vous garer.', style=styles),
-    html.Div(id='content'),
     html.Div(id='menu-deroulant-parkings', style=input_style),
     html.Hr(style=line_style),
-    html.Div(children = [html.H4("Choisissez un parking et cliquez sur le bouton")]),
+    html.Div(children = [html.H3("Sélectionnez un moyen de transport en cliquant sur le bouton associé")]),
     html.Div(style={'display': 'flex', 'justify-content':'space-around'}, children=[
         html.Div(style={'flex': '1', 'margin-left': '100px'}, children=[
-            html.Div(style={'display': 'flex'}, children=[
-                html.Div(style={'display': 'flex', 'justify-items': 'right'}, children=[
+            html.Div(children=[
+                html.Div(style={'justify-items': 'stretch'}, children=[
                     html.Button("Je préfère le vélo", id='velo_button', style=button_style)
                 ]),
             ]),
-            html.Div(id='content_velo'),
-            dcc.Graph(id='carte_velo', figure=carte_velo)
+            dcc.Graph(id='carte_velo', figure=carte_velo),
+            html.Div(id='content_velo')
         ]),
         html.Div(style={'flex': '1', 'margin-left': '10px'}, children=[
             html.Button("Je préfère les transports en commun", id='tec_button', style=button_style),
-            html.Div(id='menu-deroulant-arrets', style=input_style),
-            html.Div(id='content_tec'),
             dcc.Graph(id='carte_tec', figure=carte_tec),
+            html.Div(id='content_tec'),
+            html.Div(id='menu-deroulant-arrets', style=input_style),
             html.Button("J'ai choisi mon arrêt.", id='arret-button', style=button_style),
             html.Div(id='content_horaires')
         ])
@@ -218,7 +216,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
             distances[coordinate_to_compare] = distance
         closest_parkings = sorted(distances, key=distances.get)[:5]
         if closest_parkings:
-            df_5_parkings_proches = pd.DataFrame(columns=['Parkings', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
+            df_5_parkings_proches = pd.DataFrame(columns=['Parking', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
             for parking in closest_parkings:
                 parking_data = df_parking_global[df_parking_global['lat&lon'] == parking]
                 nom = parking_data['nom'].values[0]
@@ -231,7 +229,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
                 
                 distance = distances[parking]
                 df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
-                    'Parkings': [nom],
+                    'Parking': [nom],
                     'Type de parking': [type_parking],
                     'Gratuit': [gratuit],
                     'Nb_places_totales': [nb_places],
@@ -256,8 +254,8 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
                         size=20,
                         color='#a5282b',
                         opacity=1),
-                    name=df_5_parkings_proches['Parkings'][i],
-                    text = [f" <b>Nom du parking:</b> {df_5_parkings_proches['Parkings'][i]} <b>Distance:</b> {df_5_parkings_proches['Distance(m)'].astype(str)[i]} Metres"],
+                    name=df_5_parkings_proches['Parking'][i],
+                    text = [f" <b>Nom du parking:</b> {df_5_parkings_proches['Parking'][i]} <b>Distance:</b> {df_5_parkings_proches['Distance(m)'].astype(str)[i]} Metres"],
                     hoverinfo = ['text']    
             )
                 )
@@ -274,7 +272,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
 
         return adresse_depart, carte, html.Div(children = [dash_table.DataTable(id='df_5_parkings_proches_dash',data = df_5_parkings_proches_dash.to_dict('records'),
                                                 style_data={'border': '1px solid #ffc12b'},
-                                                style_cell={'textAlign': 'center'})]),dcc.Dropdown(id='menu-deroulant-parkings', options=[{'label': parking, 'value': parking} for parking in df_5_parkings_proches['Parkings']])
+                                                style_cell={'textAlign': 'center'})]),dcc.Dropdown(id='menu-deroulant-parkings', options=[{'label': parking, 'value': parking} for parking in df_5_parkings_proches['Parking']])
     else:
         return "Adresse non trouvée", starting_carte, 'Tableau des 5 parkings les plus proches', 'Choisissez un parking dans le menu déroulant'
     
@@ -282,8 +280,8 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
 
 
 @app.callback(
-    [Output('content_velo', 'children'),
-    Output('carte_velo', 'figure'),       
+    [Output('carte_velo', 'figure'),
+    Output('content_velo', 'children'),
     ],
     [Input('velo_button', 'n_clicks'),
      Input('menu-deroulant-parkings', 'value')
@@ -294,7 +292,6 @@ def render_content( n_clicks, parking_choisi):
     if n_clicks is not None:
             
         adresse_du_parking_choisi = df_parking_global[df_parking_global['nom'] == parking_choisi]['adresse'].values[0]
-        print(adresse_du_parking_choisi)
         geolocator = Nominatim(user_agent="my_app")
         location_reference = geolocator.geocode(adresse_du_parking_choisi)
 
@@ -308,7 +305,7 @@ def render_content( n_clicks, parking_choisi):
             closest_parkings = sorted(distances, key=distances.get)[:5]
 
             if closest_parkings:
-                df_5_parkings_proches = pd.DataFrame(columns=['Parkings', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
+                df_5_parkings_proches = pd.DataFrame(columns=['Parking', 'Type de parking', 'Gratuit', 'Nb_places_totales', 'Adresse', 'Distance(m)', 'lat', 'lon'])
                 for parking in closest_parkings:
                     parking_data = df_parking_global[df_parking_global['lat&lon'] == parking]
                     nom = parking_data['nom'].values[0]
@@ -319,10 +316,8 @@ def render_content( n_clicks, parking_choisi):
                     lat = parking_data['ylat'].values[0]
                     lon = parking_data['xlong'].values[0]
                     distance = distances[parking]
-                    print("{:.0f} mètres".format(distance))
-                    print(location_reference)
                     df_5_parkings_proches = pd.concat([df_5_parkings_proches, pd.DataFrame({
-                        'Parkings': [nom],
+                        'Parking': [nom],
                         'Type de parking': [type_parking],
                         'Gratuit': [gratuit],
                         'Nb_places_totales': [nb_places],
@@ -368,8 +363,7 @@ def render_content( n_clicks, parking_choisi):
                     df_station_velo_plus_proche = pd.concat([pd.Series(list_1), pd.Series(list_2), pd.Series(list_3), pd.Series(list_4),pd.Series(list_5)], axis=1)
                     df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns={0: 'Station', 1: 'Vélos disponibles', 2: 'Bornes disponibles', 3: 'Adresse', 4: 'Distance (m)'})
                     df_station_velo_plus_proche['Distance (m)'] = df_station_velo_plus_proche['Distance (m)'].astype(int)
-                    print(df_station_velo_plus_proche)
-
+                    
                     lat_parking = df_5_parkings_proches['lat'][0]
                     lon_parking = df_5_parkings_proches['lon'][0]
 
@@ -436,25 +430,25 @@ def render_content( n_clicks, parking_choisi):
                         # Obtenir la date et l'heure formatées en français
                         formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
                         formatted_date = formatted_date.replace("\955", "h")
-                        return html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
+                        return carte_velo, html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
                                                     html.Br(),
                                                     dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},style_cell={'textAlign': 'center'}),
-                                                    html.Br()]),carte_velo
+                                                    html.Br()])
 
         else:
             n_clicks = 0
 
-        return html.Div(children = [html.H4("La station la plus proche est : \n")]), starting_carte
+        return starting_carte, html.Div(children = [html.H4("La station la plus proche est : \n")]) 
 
     else:
-        html.Div(children = [html.H4(" ")]), starting_carte
+        starting_carte, html.Div(children = [html.H4(" ")])
 
 
 
 
 @app.callback(
-    [Output('content_tec', 'children'),
-    Output('carte_tec', 'figure'),       
+    [Output('carte_tec', 'figure'),
+    Output('content_tec', 'children'),       
     ],
     [Input('tec_button', 'n_clicks'),
      Input('menu-deroulant-parkings', 'value')
@@ -465,7 +459,6 @@ def render_content2(n_clicks, parking_choisi):
     if n_clicks is not None:
             
         adresse_du_parking_choisi = df_parking_global[df_parking_global['nom'] == parking_choisi]['adresse'].values[0]
-        print(adresse_du_parking_choisi)
         geolocator = Nominatim(user_agent="my_app")
         location_reference = geolocator.geocode(adresse_du_parking_choisi)
 
@@ -490,7 +483,6 @@ def render_content2(n_clicks, parking_choisi):
                 df_arrets_plus_proches = df_arrets_plus_proches.rename(columns={0: 'Arrets', 1: 'id_stop_area', 2: 'lat&lon', 3: 'Distance (m)'})
                 df_arrets_plus_proches['Distance (m)'] = df_arrets_plus_proches['Distance (m)'].astype(int)
                 df_arrets_plus_proches[['lat','lon']] = df_arrets_plus_proches['lat&lon'].str.split(",",expand=True).astype(float)
-                print(df_arrets_plus_proches)
                 carte_tec = go.Figure()
                 for i in range(5):
                     coordonnees_lat_arrets_tisseo = df_arrets_plus_proches['lat'][i]
@@ -514,7 +506,7 @@ def render_content2(n_clicks, parking_choisi):
                     mapbox_center_lat=df_arrets_plus_proches['lat'][0],
                     mapbox=dict(
                         zoom=15
-                    )
+                    ),margin=dict(l=0, r=0, t=0, b=0)
                 )
                         
                 now = datetime.now()
@@ -523,22 +515,22 @@ def render_content2(n_clicks, parking_choisi):
 
                 
 
-                return html.Div(children=[
-    html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
-    html.Br(),
-    html.Br(),
-    dash_table.DataTable(
-        id='df_arrets_plus_proches',
-        data=df_arrets_plus_proches[['Arrets', 'Distance (m)']].to_dict('records'),
-        style_data={'border': '1px solid #ffc12b'},
-        style_cell={'textAlign': 'center'}
-    ),
-    html.Br(),
-    dcc.Dropdown(
-        id='menu-deroulant-arrets',
-        options=[{'label': arret, 'value': arret} for arret in df_arrets_plus_proches['Arrets']]
+                return carte_tec, html.Div(children=[
+                    html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
+                    html.Br(),
+                    html.Br(),
+                    dash_table.DataTable(
+                    id='df_arrets_plus_proches',
+                    data=df_arrets_plus_proches[['Arrets', 'Distance (m)']].to_dict('records'),
+                    style_data={'border': '1px solid #ffc12b'},
+                    style_cell={'textAlign': 'center'}
+                    ),
+                    html.Br(),
+                    dcc.Dropdown(
+                    id='menu-deroulant-arrets',
+                    options=[{'label': arret, 'value': arret} for arret in df_arrets_plus_proches['Arrets']]
     )
-]), carte_tec
+])
 
             else:
                 print("Aucune station trouvée")
@@ -547,11 +539,10 @@ def render_content2(n_clicks, parking_choisi):
 
 
         else:
-            return html.Div(children = [html.H4(f"Adresse non trouvée ")]), starting_carte
+            return starting_carte, html.Div(children = [html.H4(f"Adresse non trouvée ")])
 
     else:
-        return html.Div(children = [html.H4("")]), starting_carte
-
+        return starting_carte, html.Div(children = [html.H4("")])
 
 
 @app.callback(
@@ -596,7 +587,6 @@ def render_content3(n_clicks, nom_arret_choisi):
             })
 
             df_horaires_utilisateur = df_horaires_utilisateur.reindex(columns=['Prochains horaires', 'Numéro de ligne', 'Nom de la ligne', 'Ville de destination' ])
-            print("Le prochain train est :", df_horaires_utilisateur)
             return [html.Div([dash_table.DataTable(id='df_horaires_utilisateur',data = df_horaires_utilisateur.to_dict('records'),style_data={'border': '1px solid #ffc12b'},style_cell={'textAlign': 'center'})])]
         
         else:
