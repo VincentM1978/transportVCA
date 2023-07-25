@@ -602,4 +602,4 @@ def render_content3(n_clicks, nom_arret_choisi):
         return [dbc.Label((f""))]
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=False, use_reloader=False)
