@@ -18,6 +18,12 @@ import dash_bootstrap_components as dbc
 starting_carte = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=15, height=750, width=750, mapbox_style='open-street-map')
 carte_velo = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=750, width=750, mapbox_style='open-street-map')
 carte_tec = px.scatter_mapbox(lat=[43.6044622], lon=[1.4442469], zoom=12, height=750, width=750, mapbox_style='open-street-map')
+starting_carte.update_layout(margin=dict(l=0, r=0, t=0, b=30))
+carte_velo.update_layout(margin=dict(l=0, r=0, t=0, b=30))
+carte_tec.update_layout(margin=dict(l=0, r=0, t=0, b=30))
+now = datetime.now()
+formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
+formatted_date = formatted_date.replace("\955", "h")
 
 
 ###################################################  PARKINGS #####################################################
@@ -140,20 +146,33 @@ button_style = {
 app.layout = html.Div(style=page_style, children=[
     html.H1(children="Transports Toulouse VCA", style=styles),
     html.Hr(style=line_style),
+    html.H3(children=f'Nous sommes le {formatted_date}.', style=styles),
     html.H3(children='Entrez votre adresse de départ et cliquez sur le bouton pour trouver le parking le plus proche.', style=styles),
-    html.Div(children=[
+    
+   html.Div(children=[
+    html.Div([
         html.Label("Numéro:", style=styles),
-        dcc.Input(id='numero', placeholder='Entrez le numéro', type='text', style=input_style)]),
-    html.Div(children=[
+        dcc.Input(id='numero', placeholder='Entrez le numéro', type='text', style=input_style)
+    ], style={'display': 'inline-block'}),
+
+    html.Div([
         html.Label("Voie:", style=styles),
-        dcc.Input(id='voie', placeholder='Entrez la voie', type='text', style=input_style)]),
-    html.Div(children=[
+        dcc.Input(id='voie', placeholder='Entrez la voie', type='text', style=input_style)
+    ], style={'display': 'inline-block'}),
+
+    html.Div([
         html.Label("Code postal:", style=styles),
-        dcc.Input(id='code-postal', placeholder='Entrez le code postal', type='number', style=input_style)]),
-    html.Div(children=[
+        dcc.Input(id='code-postal', placeholder='Entrez le code postal', type='number', style=input_style)
+    ], style={'display': 'inline-block'}),
+
+    html.Div([
         html.Label("Ville:", style=styles),
-        dcc.Input(id='ville', placeholder='Entrez la ville', type='text', style=input_style)]),
-    dcc.Input(id="adresse-depart", type="text", disabled=True),
+        dcc.Input(id='ville', placeholder='Entrez la ville', type='text', style=input_style)
+    ], style={'display': 'inline-block'})
+]),
+
+
+    dcc.Input(id="adresse-depart", type="text", disabled=True, style={'justify-content' : 'center','width': '600px'}),
     html.Button('Rechercher', id='submit-button', style=button_style),
     dcc.Graph(id='carte_parkings', figure=starting_carte),
     html.Div(id='content'),
@@ -266,7 +285,7 @@ def update_adresse_depart(numero, voie, code_postal, ville, n_clicks):
                 mapbox_center_lat=df_5_parkings_proches['lat'][0],
                 mapbox=dict(
                     zoom=15
-                )
+                ),margin=dict(l=0, r=0, t=0, b=30)
             )
             
 
@@ -361,7 +380,7 @@ def render_content( n_clicks, parking_choisi):
                     list_4.append(adresse_de_la_station)
                     list_5.append(min_distance)
                     df_station_velo_plus_proche = pd.concat([pd.Series(list_1), pd.Series(list_2), pd.Series(list_3), pd.Series(list_4),pd.Series(list_5)], axis=1)
-                    df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns={0: 'Station', 1: 'Vélos disponibles', 2: 'Bornes disponibles', 3: 'Adresse', 4: 'Distance (m)'})
+                    df_station_velo_plus_proche = df_station_velo_plus_proche.rename(columns={0: 'Borne vélo', 1: 'Vélos disponibles', 2: 'Bornes disponibles', 3: 'Adresse', 4: 'Distance (m)'})
                     df_station_velo_plus_proche['Distance (m)'] = df_station_velo_plus_proche['Distance (m)'].astype(int)
                     
                     lat_parking = df_5_parkings_proches['lat'][0]
@@ -424,24 +443,20 @@ def render_content( n_clicks, parking_choisi):
                                 zoom=17,
                                 style='open-street-map'
                             ),
-                            margin=dict(l=0, r=0, t=0, b=0)
-                        )
-                        now = datetime.now()
-                        # Obtenir la date et l'heure formatées en français
-                        formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
-                        formatted_date = formatted_date.replace("\955", "h")
-                        return carte_velo, html.Div(children = [html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
+                            margin=dict(l=0, r=0, t=0, b=30)
+                        )                        
+                        return (carte_velo, html.Div(children = [html.H4(f"La borne vélo la plus proche est : \n\n"),
                                                     html.Br(),
                                                     dash_table.DataTable(id='df_station_velo_plus_proche',data = df_station_velo_plus_proche.to_dict('records'), style_data={'border': '1px solid #ffc12b'},style_cell={'textAlign': 'center'}),
-                                                    html.Br()])
+                                                    html.Br()]))
 
         else:
             n_clicks = 0
 
-        return starting_carte, html.Div(children = [html.H4("La station la plus proche est : \n")]) 
+        return (starting_carte, html.Div(children = [html.H4("La borne vélo la plus proche est : \n")]))
 
     else:
-        starting_carte, html.Div(children = [html.H4(" ")])
+        return (starting_carte, html.Div(children = [html.H4("")]))
 
 
 
@@ -506,18 +521,11 @@ def render_content2(n_clicks, parking_choisi):
                     mapbox_center_lat=df_arrets_plus_proches['lat'][0],
                     mapbox=dict(
                         zoom=15
-                    ),margin=dict(l=0, r=0, t=0, b=0)
+                    ),margin=dict(l=0, r=0, t=0, b=30)
                 )
-                        
-                now = datetime.now()
-                formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
-                formatted_date = formatted_date.replace("\955", "h")
-
-                
-
+              
                 return carte_tec, html.Div(children=[
-                    html.H4(f"Nous sommes le {formatted_date}, la station la plus proche est : \n\n"),
-                    html.Br(),
+                    html.H4(f"La station la plus proche est : \n\n"),
                     html.Br(),
                     dash_table.DataTable(
                     id='df_arrets_plus_proches',
@@ -526,17 +534,15 @@ def render_content2(n_clicks, parking_choisi):
                     style_cell={'textAlign': 'center'}
                     ),
                     html.Br(),
+                    html.H5("Sélectionnez votre station pour voir les dix prochains horaires."),
                     dcc.Dropdown(
                     id='menu-deroulant-arrets',
                     options=[{'label': arret, 'value': arret} for arret in df_arrets_plus_proches['Arrets']]
     )
 ])
-
             else:
                 print("Aucune station trouvée")
         
-
-
 
         else:
             return starting_carte, html.Div(children = [html.H4(f"Adresse non trouvée ")])
