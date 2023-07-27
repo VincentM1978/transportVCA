@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from babel.dates import format_datetime, format_date, format_time
 import dash
 from dash import dcc
@@ -22,7 +22,9 @@ starting_carte.update_layout(margin=dict(l=0, r=0, t=0, b=30))
 carte_velo.update_layout(margin=dict(l=0, r=0, t=0, b=30))
 carte_tec.update_layout(margin=dict(l=0, r=0, t=0, b=30))
 now = datetime.now()
-formatted_date = format_datetime(now, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
+# Ajouter deux heures à la date et l'heure actuelles
+now_plus_two_hours = now + timedelta(hours=2)
+formatted_date = format_datetime(now_plus_two_hours, format="cccc d MMMM yyyy, 'il est' H'h'mm", locale='fr_FR')
 formatted_date = formatted_date.replace("\955", "h")
 
 
